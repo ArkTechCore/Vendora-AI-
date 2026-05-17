@@ -1,3 +1,4 @@
+<img width="1890" height="930" alt="image" src="https://github.com/user-attachments/assets/3a94c2d6-ff50-4c74-a97a-74d6aebe0f1e" />
 # Vendora AI Restaurant Auditor
 
 An AI-powered restaurant operations intelligence platform that detects suspicious paidouts, inventory variance, and profit leakage using Gemini-powered analysis and MongoDB-backed operational data.
