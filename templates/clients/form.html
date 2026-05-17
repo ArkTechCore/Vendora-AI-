@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block heading %}Edit Client{% endblock %}
+{% block content %}
+<form method="post" class="card form-card">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="section-head"><h2>Business Info</h2></div>
+  <p>{{ form.name.label_tag }}{{ form.name }}{{ form.name.errors }}</p>
+  <p>{{ form.owner_name.label_tag }}{{ form.owner_name }}{{ form.owner_name.errors }}</p>
+  <p>{{ form.email.label_tag }}{{ form.email }}{{ form.email.errors }}</p>
+  <p>{{ form.phone.label_tag }}{{ form.phone }}{{ form.phone.errors }}</p>
+  <div class="section-head"><h2>Business Address</h2><span>Used for weather and local planning alerts</span></div>
+  <p>{{ form.street_address.label_tag }}{{ form.street_address }}{{ form.street_address.errors }}</p>
+  <div class="form-grid">
+    <p>{{ form.city.label_tag }}{{ form.city }}{{ form.city.errors }}</p>
+    <p>{{ form.state.label_tag }}{{ form.state }}{{ form.state.errors }}</p>
+    <p>{{ form.postal_code.label_tag }}{{ form.postal_code }}{{ form.postal_code.errors }}</p>
+    <p>{{ form.country.label_tag }}{{ form.country }}{{ form.country.errors }}</p>
+  </div>
+  <p>{{ form.status.label_tag }}{{ form.status }}{{ form.status.errors }}</p>
+
+  <div class="section-head"><h2>Client Owner Login</h2></div>
+  <p>{{ form.owner_username.label_tag }}{{ form.owner_username }}{{ form.owner_username.errors }}</p>
+  <p>{{ form.owner_email.label_tag }}{{ form.owner_email }}{{ form.owner_email.errors }}</p>
+  <p>{{ form.owner_first_name.label_tag }}{{ form.owner_first_name }}{{ form.owner_first_name.errors }}</p>
+  <p>{{ form.owner_last_name.label_tag }}{{ form.owner_last_name }}{{ form.owner_last_name.errors }}</p>
+  <p>{{ form.password1.label_tag }}{{ form.password1 }}{{ form.password1.errors }}</p>
+  <p>{{ form.password2.label_tag }}{{ form.password2 }}{{ form.password2.errors }}</p>
+
+  <div class="actions">
+    <button class="button primary" type="submit">Save Client</button>
+    <a class="button" href="{% url 'client_list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

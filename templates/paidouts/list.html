@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Paid-Outs{% endblock %}
+{% block content %}
+<div class="toolbar"><a class="button primary" href="{% url 'paidout_create' %}">Add Paid-Out</a></div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Store</th><th>Category</th><th>Amount</th><th>Payment Source</th><th>Paid To</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for paidout in objects %}
+      <tr>
+        <td>{{ paidout.business_date|default:paidout.created_at|date:"M j, Y" }}</td>
+        <td>{{ paidout.store.name }}</td>
+        <td>{{ paidout.get_category_display }}</td>
+        <td>{{ paidout.amount|money2 }}</td>
+        <td>{{ paidout.get_payment_source_display }}</td>
+        <td>{{ paidout.vendor_payee|default:"-" }}</td>
+        <td><span class="badge ok">{% if paidout.approved %}Approved{% else %}Pending{% endif %}</span></td>
+        <td><span class="muted">Locked</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="8">No paid-outs yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page_obj.has_other_pages %}
+<nav class="pagination">
+  {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

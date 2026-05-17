@@ -1,0 +1,34 @@
+<script>
+  (() => {
+    const node = document.getElementById("dashboard-chart-data");
+    if (!node || !window.Chart) return;
+    const data = JSON.parse(node.textContent);
+    const sharedOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 10, usePointStyle: true } } },
+      scales: { y: { grid: { color: "rgba(15, 23, 42, .08)" }, beginAtZero: true }, x: { grid: { display: false } } }
+    };
+    new Chart(document.getElementById("weeklySalesChart"), {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: [
+          { label: "Sales", data: data.sales, borderColor: "#0f766e", backgroundColor: "rgba(15, 118, 110, .14)", fill: true, tension: .34 },
+          { label: "Paid-Outs", data: data.paidouts, borderColor: "#b45309", backgroundColor: "rgba(180, 83, 9, .08)", tension: .34 }
+        ]
+      },
+      options: sharedOptions
+    });
+    new Chart(document.getElementById("paymentSplitChart"), {
+      type: "doughnut",
+      data: { labels: ["Cash", "Card"], datasets: [{ data: data.payment, backgroundColor: ["#0f766e", "#334155"], borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, cutout: "68%" }
+    });
+    new Chart(document.getElementById("categorySplitChart"), {
+      type: "bar",
+      data: { labels: data.categories, datasets: [{ label: "Spend", data: data.category_values, backgroundColor: ["#0f766e", "#7c2d12"], borderRadius: 4 }] },
+      options: sharedOptions
+    });
+  })();
+</script>

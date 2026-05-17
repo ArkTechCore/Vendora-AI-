@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block heading %}Managers{% endblock %}
+{% block content %}
+<section class="workbench-head">
+  <div>
+    <h2>Manager Access</h2>
+    <p>Control what each store manager can operate inside VendoraOps.</p>
+  </div>
+  <a class="button primary" href="{% url 'manager_create' %}">Create manager</a>
+</section>
+<div class="card table-wrap">
+  <table>
+    <thead>
+      <tr><th>Manager</th><th>Store</th><th>Inventory</th><th>Paid-outs</th><th>Daily close</th><th>Reports</th><th>POS</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for manager in managers %}
+      <tr>
+        <td>{{ manager.get_full_name|default:manager.username }}</td>
+        <td>{{ manager.store.name|default:"Unassigned" }}</td>
+        <td>{{ manager.can_manage_inventory|yesno:"Yes,No" }}</td>
+        <td>{{ manager.can_manage_paidouts|yesno:"Yes,No" }}</td>
+        <td>{{ manager.can_close_day|yesno:"Yes,No" }}</td>
+        <td>{{ manager.can_view_reports|yesno:"Yes,No" }}</td>
+        <td>{{ manager.can_manage_pos|yesno:"Yes,No" }}</td>
+        <td><span class="badge {% if manager.is_active %}ok{% else %}warn{% endif %}">{{ manager.is_active|yesno:"Active,Inactive" }}</span></td>
+        <td><a class="button small" href="{% url 'manager_edit' manager.id %}">Edit</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9">No managers yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

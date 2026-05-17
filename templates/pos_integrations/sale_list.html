@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block heading %}Imported Sales{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a class="button primary" href="{% url 'sale_create' %}">Add sale</a>
+  <a class="button primary" href="{% url 'manual_sales_entry' %}">Manual end-of-day sales</a>
+  <a class="button" href="{% url 'sale_item_create' %}">Add sale item</a>
+</div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Order</th><th>Store</th><th>Date</th><th>Total</th><th>Cash</th><th>Card</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for sale in objects %}
+      <tr>
+        <td>{{ sale.external_order_id }}</td>
+        <td>{{ sale.connection.store }}</td>
+        <td>{{ sale.business_date }}</td>
+        <td>{{ sale.total_amount }}</td>
+        <td>{{ sale.cash_amount }}</td>
+        <td>{{ sale.card_amount }}</td>
+        <td><span class="badge {% if sale.processed_inventory %}ok{% else %}warn{% endif %}">{% if sale.processed_inventory %}Processed{% else %}Unprocessed{% endif %}</span></td>
+        <td>{% if not sale.processed_inventory %}<a class="button small" href="{% url 'sale_process' sale.id %}">Process inventory</a>{% endif %}</td>
+      </tr>
+      {% empty %}<tr><td colspan="8">No imported sales yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

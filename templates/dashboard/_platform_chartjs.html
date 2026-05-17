@@ -1,0 +1,28 @@
+<script>
+  (() => {
+    const node = document.getElementById("platform-traffic-data");
+    if (!node || !window.Chart) return;
+    const data = JSON.parse(node.textContent);
+    new Chart(document.getElementById("platformTrafficChart"), {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: "Platform events",
+          data: data.counts,
+          backgroundColor: "rgba(15, 118, 110, .78)",
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: "rgba(15, 23, 42, .08)" } },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }
+        }
+      }
+    });
+  })();
+</script>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block heading %}Start Inventory Count{% endblock %}
+{% block content %}
+<form method="get" class="card form-card compact-form">
+  {{ selector.store.label_tag }}
+  {{ selector.store }}
+  {{ selector.business_date.label_tag }}
+  {{ selector.business_date }}
+  <button class="button primary" type="submit">Load inventory</button>
+</form>
+
+{% if store %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>{{ store.name }} count</h2>
+    <span>Adjusts stock to counted quantity</span>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="store" value="{{ store.id }}">
+    <input type="hidden" name="business_date" value="{{ selector.business_date.value }}">
+    <p>{{ selector.notes.label_tag }}{{ selector.notes }}</p>
+    <div class="table-wrap flat">
+      <table>
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Current</th>
+            <th>Counted quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ingredient in ingredients %}
+          <tr>
+            <td>{{ ingredient.name }} <span class="muted">({{ ingredient.unit }})</span></td>
+            <td>{{ ingredient.current_quantity }} {{ ingredient.unit }}</td>
+            <td><input name="counted_{{ ingredient.id }}" type="number" min="0" step="0.001" placeholder="{{ ingredient.current_quantity }}"></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No ingredients for this store yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="button" type="submit" name="draft" value="1">Save Draft</button>
+      <button class="button primary" type="submit">Submit Count</button>
+      <a class="button" href="{% url 'inventory_count_list' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% else %}
+<section class="card smart-panel">
+  <h2>Select a store</h2>
+  <p class="muted">Use stock count when actual inventory is known from a shelf/freezer count.</p>
+</section>
+{% endif %}
+{% endblock %}

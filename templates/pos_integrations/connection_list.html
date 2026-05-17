@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block heading %}POS Connections{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a class="button primary" href="{% url 'pos_connection_create' %}">Create POS connection</a>
+  <a class="button" href="{% url 'manual_sales_entry' %}">Manual sales entry</a>
+</div>
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Live POS API readiness</h2>
+      <span>VendoraOps can manually import sales today. Live sync needs credentials from each POS provider.</span>
+    </div>
+  </div>
+  <div class="settings-grid">
+    {% for key, provider in provider_requirements.items %}
+    <article class="settings-card">
+      <h2>{{ provider.title }}</h2>
+      <p><strong>Ask POS for:</strong> {{ provider.ask_for|join:", " }}</p>
+      <p><strong>VendoraOps stores:</strong> {{ provider.vendoraops_needs|join:", " }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+<div class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Store</th>
+        <th>Provider</th>
+        <th>Environment</th>
+        <th>Merchant</th>
+        <th>Location</th>
+        <th>Status</th>
+        <th>Last sync</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for connection in objects %}
+      <tr>
+        <td>{{ connection.store }}</td>
+        <td>{{ connection.get_provider_display }}</td>
+        <td>{{ connection.get_environment_display }}</td>
+        <td>{{ connection.external_merchant_id|default:"Hidden / not set" }}</td>
+        <td>{{ connection.external_location_id|default:"Hidden / not set" }}</td>
+        <td><span class="badge {% if connection.sync_status == 'success' %}ok{% else %}warn{% endif %}">{{ connection.get_sync_status_display }}</span></td>
+        <td>{{ connection.last_sync_at|default:"Never" }}</td>
+        <td>{{ connection.is_active }}</td>
+        <td>
+          <a class="button small" href="{% url 'pos_connection_edit' connection.id %}">Edit</a>
+          <a class="button small" href="{% url 'pos_connection_sync' connection.id %}">Sync</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9">No POS connections yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Open-source upgrade stack</h2>
+      <span>Free tools we can use right away without POS approval, paid keys, or license review blockers.</span>
+    </div>
+  </div>
+  <div class="table-wrap flat">
+    <table>
+      <thead><tr><th>Tool</th><th>License</th><th>Use in VendoraOps</th></tr></thead>
+      <tbody>
+        {% for name, license, note in upgrade_stack %}
+        <tr><td>{{ name }}</td><td>{{ license }}</td><td>{{ note }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

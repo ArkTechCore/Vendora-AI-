@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+
+{% block title %}Vendora AI Restaurant Auditor{% endblock %}
+{% block heading %}Restaurant Operations Intelligence{% endblock %}
+
+{% block content %}
+{% if not selected_store %}
+  <section class="card auditor-panel">
+    <h2>No active store found</h2>
+    <p>Add a store with operational records before running an audit.</p>
+  </section>
+{% else %}
+<div class="audit-screen-loader" id="audit-screen-loader" role="status" aria-live="polite" hidden>
+  <div class="audit-screen-loader-card">
+    <span class="audit-screen-spinner" aria-hidden="true"></span>
+    <p class="eyebrow">AI Operational Audit</p>
+    <h2 id="audit-screen-title">Running operational audit</h2>
+    <p id="audit-screen-step">Reviewing operational records</p>
+    <div class="audit-screen-bar"><span></span></div>
+  </div>
+</div>
+<section class="audit-command">
+  <div class="audit-command-main">
+    <p class="eyebrow">Operational Audit Intelligence</p>
+    <h2>{{ selected_store.name }}</h2>
+    <p>Evidence-based review of paidouts, inventory pressure, sales performance, and cash-control exposure.</p>
+    <div class="audit-meta">
+      <span>Audit period: {{ audit_period }}</span>
+      <span id="last-analyzed-label">Last analyzed: {% if latest_analyzed_at %}{{ latest_analyzed_at|date:"M d, Y H:i" }}{% else %}Pending current run{% endif %}</span>
+    </div>
+  </div>
+  <div class="audit-command-side">
+    <div class="audit-badges">
+      <span class="audit-pill risk-{{ risk_level }}">{{ risk_level|title }} risk</span>
+      <span class="audit-pill">Gemini AI</span>
+      <span class="audit-pill">Operational Data Layer</span>
+    </div>
+    {% if stores|length > 1 %}
+    <form class="store-switcher" method="get">
+      <label for="audit-store">Audit store</label>
+      <select id="audit-store" name="store" onchange="this.form.submit()">
+        {% for store in stores %}
+          <option value="{{ store.id }}" {% if store.id == selected_store.id %}selected{% endif %}>{{ store.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    <div class="actions auditor-actions">
+      <form method="post" action="{% url 'ai_run_audit' %}" onsubmit="window.vendoraShowAuditLoader && window.vendoraShowAuditLoader('audit')">
+        {% csrf_token %}
+        <input type="hidden" name="storeId" value="{{ selected_store.id }}">
+        <button class="button primary audit-primary" id="analyze-btn" type="submit" data-store="{{ selected_store.id }}">Run Operational Audit</button>
+      </form>
+      <form method="post" action="{% url 'ai_run_investigation' %}" onsubmit="window.vendoraShowAuditLoader && window.vendoraShowAuditLoader('investigate')">
+        {% csrf_token %}
+        <input type="hidden" name="storeId" value="{{ selected_store.id }}">
+        <input type="hidden" name="context" value="Investigate current operational risk pattern.">
+        <button class="button audit-secondary" id="investigate-btn" type="submit" data-store="{{ selected_store.id }}">Investigate Risk Pattern</button>
+      </form>
+    </div>
+    <div class="audit-run-status" id="audit-run-status" aria-live="polite" hidden>
+      <span class="mini-spinner" aria-hidden="true"></span>
+      <strong id="audit-run-title">Operational audit running</strong>
+      <small id="audit-run-step">Reviewing operational records</small>
+    </div>
+    <p class="infra-note">Powered by Gemini. Operational records are stored securely when MongoDB is configured.</p>
+  </div>
+</section>
+
+<section class="audit-kpi-grid">
+  <article class="audit-kpi"><span>Net sales</span><strong>${{ data.salesSummary.totalSales|floatformat:2 }}</strong><small>Audit-period sales</small><em>{{ kpi_trends.sales }}</em></article>
+  <article class="audit-kpi"><span>Paidouts</span><strong>${{ data.profitLoss.paidouts|floatformat:2 }}</strong><small>Operating disbursements</small><em>{{ kpi_trends.paidouts }}</em></article>
+  <article class="audit-kpi"><span>Paidout ratio</span><strong>{{ paidout_ratio_percent|floatformat:1 }}%</strong><small>Paidouts vs. sales</small><em>{{ kpi_trends.paidout_ratio }}</em></article>
+  <article class="audit-kpi"><span>Inventory value</span><strong>${{ data.profitLoss.inventoryValue|floatformat:2 }}</strong><small>Tracked stock value</small><em>{{ kpi_trends.inventory }}</em></article>
+  <article class="audit-kpi"><span>Low stock</span><strong>{{ data.lowStock|length }}</strong><small>Reorder exposure</small><em>{{ kpi_trends.low_stock }}</em></article>
+  <article class="audit-kpi"><span>Est. profit</span><strong>${{ data.profitLoss.estimatedProfit|floatformat:2 }}</strong><small>Operating estimate</small><em>{{ kpi_trends.profit }}</em></article>
+</section>
+
+<section class="audit-workspace">
+  <aside class="audit-risk-column">
+    <article class="card auditor-panel">
+      <div class="section-head">
+        <h2>Operational Alerts</h2>
+        <span>{{ data.dateRange|title }}</span>
+      </div>
+      <div class="alert-list compact-alerts">
+        {% for paidout in suspicious_paidouts %}
+          <div class="alert-row danger-row">
+            <div class="signal-title"><i aria-hidden="true"></i><strong>${{ paidout.amount|floatformat:2 }} cash-control review</strong></div>
+            <span>{{ paidout.reason }} | {{ paidout.employee }} | {{ paidout.paymentMethod|title }}</span>
+          </div>
+        {% empty %}
+          <div class="alert-row"><strong>No paidout exceptions detected</strong><span>Paidouts are within current control thresholds.</span></div>
+        {% endfor %}
+        {% for item in data.lowStock|slice:":4" %}
+          <div class="alert-row warn-row">
+            <div class="signal-title"><i aria-hidden="true"></i><strong>{{ item.name }} inventory pressure</strong></div>
+            <span>{{ item.currentStock|floatformat:1 }} {{ item.unit }} on hand; reorder threshold {{ item.reorderLevel|floatformat:1 }}.</span>
+          </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="card auditor-panel">
+      <div class="section-head">
+        <h2>Historical Signals</h2>
+        <span>Prior 7 days</span>
+      </div>
+      <div class="signal-list">
+        {% for row in data.historicalPatterns.paidoutsByEmployee|slice:":4" %}
+          <div class="signal-row">
+            <span>{{ row.employee }}</span>
+            <strong>${{ row.total|floatformat:2 }}</strong>
+            <small>{{ row.count }} paidout{{ row.count|pluralize }}</small>
+          </div>
+        {% empty %}
+          <div class="signal-row"><span>No historical paidouts found</span><strong>$0.00</strong><small>Comparison window clear</small></div>
+        {% endfor %}
+      </div>
+    </article>
+  </aside>
+
+  <article class="card auditor-panel ai-report-card">
+    <div class="report-head">
+      <div>
+        <p class="eyebrow">Current Audit</p>
+        <h2>AI Auditor Report</h2>
+      </div>
+      <div class="report-actions">
+        <span id="report-source">{{ latest_report_source }}</span>
+        <a class="button small" id="download-report-btn" href="{% url 'ai_report_pdf' %}?storeId={{ selected_store.id }}">Download PDF</a>
+        <button class="button small" id="print-report-btn" type="button">Print</button>
+      </div>
+    </div>
+    <div class="report-meta">
+      <span id="report-generated-label">Generated: {% if latest_analyzed_at %}{{ latest_analyzed_at|date:"M d, Y H:i" }} UTC{% else %}Pending analysis{% endif %}</span>
+      <span>Analysis type: {{ latest_report_source }}</span>
+      <span>Storage: Audit report history</span>
+    </div>
+    <div id="report-output" class="report-scroll">
+      {% include "ai_auditor/report_fragment.html" with report=latest_report %}
+    </div>
+  </article>
+</section>
+
+<section class="audit-table-grid">
+  <article class="card auditor-panel enterprise-table-card">
+    <div class="section-head"><h2>Inventory Status</h2><span>Key records</span></div>
+    <div class="table-wrap compact-table-wrap">
+      <table class="enterprise-table">
+        <thead><tr><th>Item</th><th>Category</th><th>Current stock</th><th>Daily usage</th><th>Reorder level</th><th>Cost</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for item in data.inventory|slice:":8" %}
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.category }}</td>
+            <td>{{ item.currentStock|floatformat:1 }} {{ item.unit }}</td>
+            <td>{{ item.dailyUsageEstimate|floatformat:1 }}</td>
+            <td>{{ item.reorderLevel|floatformat:1 }}</td>
+            <td>${{ item.costPerUnit|floatformat:2 }}</td>
+            <td><span class="badge {% if item.isLowStock %}warn{% else %}ok{% endif %}">{% if item.isLowStock %}Reorder{% else %}In range{% endif %}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="card auditor-panel enterprise-table-card">
+    <div class="section-head"><h2>Paidouts Ledger</h2><span>Key records</span></div>
+    <div class="table-wrap compact-table-wrap">
+      <table class="enterprise-table">
+        <thead><tr><th>Amount</th><th>Reason</th><th>Category</th><th>Employee</th><th>Method</th><th>Risk status</th></tr></thead>
+        <tbody>
+          {% for paidout in data.paidouts|slice:":8" %}
+          <tr>
+            <td>${{ paidout.amount|floatformat:2 }}</td>
+            <td>{{ paidout.reason|truncatechars:42 }}</td>
+            <td>{{ paidout.category }}</td>
+            <td>{{ paidout.employee }}</td>
+            <td>{{ paidout.paymentMethod|title }}</td>
+            <td><span class="badge {% if paidout.suspicious %}danger{% else %}ok{% endif %}">{% if paidout.suspicious %}Review{% else %}Cleared{% endif %}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="audit-summary-grid">
+  <article class="card auditor-panel">
+    <div class="section-head"><h2>Business Summary</h2><span>Audit period</span></div>
+    <div class="pl-grid">
+      <div><span>Sales</span><strong>${{ data.salesSummary.totalSales|floatformat:2 }}</strong></div>
+      <div><span>Expenses</span><strong>${{ data.profitLoss.paidouts|floatformat:2 }}</strong></div>
+      <div><span>Inventory loss risk</span><strong>{{ data.lowStock|length }} items</strong></div>
+      <div><span>Estimated operating profit</span><strong>${{ data.profitLoss.estimatedProfit|floatformat:2 }}</strong></div>
+    </div>
+  </article>
+
+  <article class="card auditor-panel infrastructure-panel">
+    <div class="section-head"><h2>Platform Transparency</h2><span>Audit infrastructure</span></div>
+    <div class="infra-grid">
+      <div><span>AI Engine</span><strong>Gemini</strong></div>
+      <div><span>Data Layer</span><strong>MongoDB operational records</strong></div>
+      <div><span>Report Storage</span><strong>Audit report history</strong></div>
+      <div><span>Operational Data</span><strong>Inventory, paidouts, and sales reports</strong></div>
+    </div>
+  </article>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block page_js %}
+{% if selected_store %}
+<script>
+  (() => {
+    const readCookie = (name) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      return parts.length === 2 ? decodeURIComponent(parts.pop().split(";").shift()) : "";
+    };
+    const csrfToken = readCookie("csrftoken");
+    const output = document.getElementById("report-output");
+    const source = document.getElementById("report-source");
+    const analyzeBtn = document.getElementById("analyze-btn");
+    const investigateBtn = document.getElementById("investigate-btn");
+    const printBtn = document.getElementById("print-report-btn");
+    const reportCard = document.querySelector(".ai-report-card");
+    const runStatus = document.getElementById("audit-run-status");
+    const runTitle = document.getElementById("audit-run-title");
+    const runStep = document.getElementById("audit-run-step");
+    const screenLoader = document.getElementById("audit-screen-loader");
+    const screenTitle = document.getElementById("audit-screen-title");
+    const screenStep = document.getElementById("audit-screen-step");
+    const lastAnalyzedLabel = document.getElementById("last-analyzed-label");
+    const reportGeneratedLabel = document.getElementById("report-generated-label");
+    const originalAnalyzeText = analyzeBtn.textContent;
+    const originalInvestigateText = investigateBtn.textContent;
+    const text = (value) => String(value ?? "");
+    let loadingStepTimer = null;
+
+    window.vendoraShowAuditLoader = (mode) => {
+      const title = mode === "investigate" ? "Investigating risk pattern" : "Running operational audit";
+      const steps = mode === "investigate"
+        ? ["Starting investigation", "Comparing historical records", "Reviewing manager patterns", "Building findings"]
+        : ["Starting audit", "Reviewing records", "Checking paidouts", "Scoring risk"];
+      let stepIndex = 0;
+      if (screenLoader) screenLoader.hidden = false;
+      if (screenTitle) screenTitle.textContent = title;
+      if (screenStep) screenStep.textContent = steps[stepIndex];
+      if (runStatus) runStatus.hidden = false;
+      if (runTitle) runTitle.textContent = title;
+      if (runStep) runStep.textContent = steps[stepIndex];
+      window.setInterval(() => {
+        stepIndex = (stepIndex + 1) % steps.length;
+        if (screenStep) screenStep.textContent = steps[stepIndex];
+        if (runStep) runStep.textContent = steps[stepIndex];
+      }, 650);
+      analyzeBtn.disabled = true;
+      investigateBtn.disabled = true;
+      analyzeBtn.classList.add("is-loading");
+      investigateBtn.classList.add("is-loading");
+      analyzeBtn.textContent = mode === "investigate" ? "Audit locked..." : "Running audit...";
+      investigateBtn.textContent = mode === "investigate" ? "Investigating..." : "Please wait...";
+      return true;
+    };
+
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const waitForPaint = () => new Promise((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+    });
+
+    const appendText = (parent, tag, value, className) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      node.textContent = text(value);
+      parent.appendChild(node);
+      return node;
+    };
+
+    const badgeClass = (severity) => severity === "high" ? "danger" : severity === "low" ? "ok" : "warn";
+    const cleanEvidence = (value) => {
+      let line = text(value);
+      const paidout = line.match(/paidouts\[id=\d+,\s*amount=([\d.]+),\s*reason='([^']+)',\s*employee='([^']+)',\s*paymentMethod='([^']+)'/);
+      if (paidout) return `$${Number(paidout[1]).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${paidout[2]} recorded by ${paidout[3]} using ${paidout[4]}.`;
+      const employee = line.match(/paidoutsByEmployee:\s*\{'employee': '([^']+)', 'total': ([\d.]+), 'count': (\d+)\}/);
+      if (employee) return `${employee[1]} recorded ${employee[3]} paidout(s) totaling $${Number(employee[2]).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}.`;
+      const ratio = line.match(/paidoutToSalesRatio:\s*([\d.]+)/);
+      if (ratio) return `Paidouts equal ${(Number(ratio[1]) * 100).toFixed(1)}% of sales for the audit period.`;
+      return line
+        .replaceAll("restaurantData.", "")
+        .replaceAll("historicalPatterns", "historical patterns")
+        .replaceAll("paidoutsByEmployee", "paidouts by employee")
+        .replaceAll("paidoutToSalesRatio", "paidout-to-sales ratio")
+        .replaceAll("paymentMethod", "payment method")
+        .replaceAll("suspicious=true", "requires review")
+        .replaceAll("suspicious=false", "not automatically flagged")
+        .replace(/id=\d+,?\s*/g, "");
+    };
+
+    const renderReport = (report) => {
+      output.replaceChildren();
+      const risk = document.createElement("div");
+      risk.className = `risk-strip risk-${text(report.riskLevel || "medium")}`;
+      appendText(risk, "span", `${report.riskLevel || "medium"} risk`);
+      appendText(risk, "strong", `${report.riskScore || 0}/100`);
+      output.appendChild(risk);
+
+      const summaryBlock = document.createElement("section");
+      summaryBlock.className = "report-section executive-summary";
+      appendText(summaryBlock, "h3", "Executive Summary");
+      appendText(summaryBlock, "p", report.summary || "No audit summary returned.", "report-summary");
+      output.appendChild(summaryBlock);
+
+      const findings = document.createElement("section");
+      findings.className = "report-section";
+      appendText(findings, "h3", "Key Findings");
+      const stack = document.createElement("div");
+      stack.className = "finding-stack";
+      (report.findings || []).forEach((finding, index) => {
+        const card = document.createElement("article");
+        card.className = `finding-card severity-${finding.severity || "medium"}`;
+        const top = document.createElement("div");
+        const badge = appendText(top, "span", finding.severity || "medium", `badge ${badgeClass(finding.severity)}`);
+        badge.setAttribute("aria-label", "Severity");
+        appendText(top, "small", finding.category || "Operational risk", "finding-category");
+        appendText(top, "strong", finding.title || `Finding ${index + 1}`);
+        card.appendChild(top);
+        appendText(card, "p", finding.explanation || "");
+        const evidenceTitle = appendText(card, "b", "Evidence");
+        evidenceTitle.className = "finding-subhead";
+        const list = document.createElement("ul");
+        (finding.evidence || []).forEach((item) => appendText(list, "li", cleanEvidence(item)));
+        card.appendChild(list);
+        appendText(card, "b", "Recommendation", "finding-subhead");
+        appendText(card, "p", finding.recommendation || "");
+        stack.appendChild(card);
+      });
+      findings.appendChild(stack);
+      output.appendChild(findings);
+
+      const actions = document.createElement("section");
+      actions.className = "next-actions";
+      appendText(actions, "strong", "Next Actions");
+      const list = document.createElement("ol");
+      (report.nextActions || []).forEach((item) => appendText(list, "li", item));
+      actions.appendChild(list);
+      output.appendChild(actions);
+    };
+
+    const setBusy = (busy, mode) => {
+      if (loadingStepTimer) {
+        window.clearInterval(loadingStepTimer);
+        loadingStepTimer = null;
+      }
+      analyzeBtn.disabled = busy;
+      investigateBtn.disabled = busy;
+      analyzeBtn.classList.toggle("is-loading", busy);
+      investigateBtn.classList.toggle("is-loading", busy);
+      reportCard?.classList.toggle("audit-running", busy);
+      if (!busy) {
+        analyzeBtn.textContent = originalAnalyzeText;
+        investigateBtn.textContent = originalInvestigateText;
+        if (runStatus) runStatus.hidden = true;
+        if (screenLoader) screenLoader.hidden = true;
+        return;
+      }
+      const statusSteps = mode === "investigate"
+        ? ["Comparing prior seven days", "Reviewing manager paidout patterns", "Checking repeated inventory shortages", "Evaluating recurring control gaps"]
+        : ["Reviewing operational records", "Analyzing paidout patterns", "Comparing inventory variance", "Evaluating operational risk", "Generating audit report"];
+      let currentStep = 0;
+      if (runStatus) runStatus.hidden = false;
+      if (runTitle) runTitle.textContent = mode === "investigate" ? "Risk pattern investigation running" : "Operational audit running";
+      if (runStep) runStep.textContent = statusSteps[currentStep];
+      if (screenLoader) screenLoader.hidden = false;
+      if (screenTitle) screenTitle.textContent = mode === "investigate" ? "Investigating risk pattern" : "Running operational audit";
+      if (screenStep) screenStep.textContent = statusSteps[currentStep];
+      loadingStepTimer = window.setInterval(() => {
+        currentStep = (currentStep + 1) % statusSteps.length;
+        if (runStep) runStep.textContent = statusSteps[currentStep];
+        if (screenStep) screenStep.textContent = statusSteps[currentStep];
+      }, 1300);
+      analyzeBtn.textContent = mode === "investigate" ? "Audit locked..." : "Running audit...";
+      investigateBtn.textContent = mode === "investigate" ? "Investigating..." : "Please wait...";
+      source.textContent = mode === "investigate" ? "Historical comparison running" : "Operational audit running";
+      output.replaceChildren();
+      const loading = document.createElement("div");
+      loading.className = "audit-loading";
+      loading.setAttribute("role", "status");
+      loading.setAttribute("aria-live", "polite");
+      const loadingHead = document.createElement("div");
+      loadingHead.className = "audit-loading-head";
+      const spinner = document.createElement("span");
+      spinner.className = "audit-spinner";
+      spinner.setAttribute("aria-hidden", "true");
+      loadingHead.appendChild(spinner);
+      const loadingCopy = document.createElement("div");
+      appendText(loadingCopy, "strong", mode === "investigate" ? "Investigating recurring risk pattern" : "AI operational analysis in progress");
+      appendText(loadingCopy, "p", mode === "investigate" ? "Comparing the current finding against prior operational records." : "Reviewing restaurant records and generating an evidence-based audit report.");
+      loadingHead.appendChild(loadingCopy);
+      loading.appendChild(loadingHead);
+      const progress = document.createElement("div");
+      progress.className = "audit-progress";
+      progress.appendChild(document.createElement("span"));
+      loading.appendChild(progress);
+      const steps = document.createElement("ol");
+      [
+        "Reviewing operational records",
+        "Analyzing paidout patterns",
+        mode === "investigate" ? "Comparing historical manager behavior" : "Evaluating inventory variance",
+        mode === "investigate" ? "Identifying recurring control gaps" : "Scoring operational risk",
+        mode === "investigate" ? "Building investigation report" : "Generating Gemini audit findings",
+      ].forEach((step) => appendText(steps, "li", step));
+      loading.appendChild(steps);
+      output.appendChild(loading);
+    };
+
+    const post = async (url, body, mode) => {
+      setBusy(true, mode);
+      const startedAt = Date.now();
+      const controller = new AbortController();
+      const requestTimeout = window.setTimeout(() => controller.abort(), 45000);
+      await waitForPaint();
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "X-CSRFToken": decodeURIComponent(csrfToken)},
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        window.clearTimeout(requestTimeout);
+        if (!response.ok) throw new Error("Audit request failed");
+        const payload = await response.json();
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < 700) await wait(700 - elapsed);
+        source.textContent = payload.source === "gemini" ? "Gemini AI report" : "Rule-based audit report";
+        const nowLabel = new Date().toLocaleString(undefined, {month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"});
+        if (lastAnalyzedLabel) lastAnalyzedLabel.textContent = `Last analyzed: ${nowLabel}`;
+        if (reportGeneratedLabel) reportGeneratedLabel.textContent = `Generated: ${nowLabel}`;
+        renderReport(payload.report || {});
+      } catch (error) {
+        window.clearTimeout(requestTimeout);
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < 700) await wait(700 - elapsed);
+        output.replaceChildren();
+        const box = document.createElement("div");
+        box.className = "empty-report error-report";
+        appendText(box, "strong", "Audit could not be completed");
+        appendText(box, "p", error.name === "AbortError" ? "The audit request took too long and was stopped. Please retry the analysis." : "The operational audit request failed. Check server logs and retry the analysis.");
+        output.appendChild(box);
+        source.textContent = "Request error";
+      } finally {
+        setBusy(false, mode);
+      }
+    };
+
+    window.vendoraAuditClick = (mode, button) => {
+      if (button?.disabled) return;
+      if (mode === "investigate") {
+        post("{% url 'ai_investigate' %}", {
+          storeId: button.dataset.store,
+          findingId: "paidout-cash-adjustment",
+          context: output.textContent.slice(0, 700)
+        }, "investigate");
+        return false;
+      }
+      post("{% url 'ai_analyze' %}", {
+        storeId: button.dataset.store,
+        dateRange: "yesterday",
+        question: "Run operational audit for the current audit period"
+      }, "audit");
+      return false;
+    };
+
+    printBtn.addEventListener("click", () => {
+      window.print();
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

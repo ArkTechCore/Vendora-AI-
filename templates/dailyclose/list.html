@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Daily Close{% endblock %}
+{% block content %}
+<div class="toolbar"><a class="button primary" href="{% url 'daily_close_create' %}">Close Day</a></div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Store</th><th>Expected Cash</th><th>Counted Cash</th><th>Short/Over</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for close in objects %}
+      <tr>
+        <td>{{ close.business_date }}</td>
+        <td>{{ close.store.name }}</td>
+        <td>{{ close.expected_cash|money2 }}</td>
+        <td>{{ close.counted_cash|money2 }}</td>
+        <td>{{ close.short_over|money2 }}</td>
+        <td><span class="badge ok">{% if close.locked %}Closed{% else %}Open{% endif %}</span></td>
+        <td><a class="button small" href="{% url 'daily_close_receipt' close.id %}">Receipt</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="7">No daily close records yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

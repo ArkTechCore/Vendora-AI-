@@ -1,0 +1,37 @@
+{% load table_tags %}
+<section class="grid">
+  {% for label, value in stats.items %}
+  <article class="metric-card">
+    <span>{{ label|title }}</span>
+    <strong>{{ value }}</strong>
+  </article>
+  {% endfor %}
+</section>
+{% if profit_loss %}
+<section class="card smart-panel pl-panel">
+  <div class="section-head">
+    <div>
+      <h2>Profit & Loss</h2>
+      <span>{{ profit_loss.period }} - estimated operator P&L, inventory spend separated</span>
+    </div>
+    <span class="badge {% if profit_loss.net_profit >= 0 %}ok{% else %}warn{% endif %}">{{ profit_loss.margin|floatformat:1 }}% net margin</span>
+  </div>
+  <div class="pl-grid">
+    <div><span>Gross sales</span><strong>{{ profit_loss.revenue|money2 }}</strong></div>
+    <div><span>Net sales</span><strong>{{ profit_loss.net_sales|money2 }}</strong></div>
+    <div><span>Food COGS</span><strong>{{ profit_loss.food_cogs|money2 }}</strong></div>
+    <div><span>Gross profit</span><strong>{{ profit_loss.gross_profit|money2 }}</strong></div>
+    <div><span>Operating expenses</span><strong>{{ profit_loss.operating_expenses|money2 }}</strong></div>
+    <div><span>Cash variance</span><strong>{{ profit_loss.cash_variance|money2 }}</strong></div>
+    <div><span>Estimated operating profit</span><strong>{{ profit_loss.net_profit|money2 }}</strong></div>
+    <div><span>Food cost</span><strong>{{ profit_loss.food_cost_percent|floatformat:1 }}%</strong></div>
+    <div><span>Inventory cash outflow</span><strong>{{ profit_loss.inventory_cash_outflow|money2 }}</strong></div>
+    <div><span>Inventory paid-outs</span><strong>{{ profit_loss.inventory_paidouts|money2 }}</strong></div>
+  </div>
+</section>
+{% endif %}
+<section class="actions">
+  {% for label, url in actions %}
+    <a class="button primary" href="{% url url %}">{{ label }}</a>
+  {% endfor %}
+</section>

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign in | VendoraOps{% endblock %}
+{% block content %}
+<section class="login-panel">
+  <div class="login-brand">
+    <span class="brand-mark large image-mark"><img src="{% static 'img/vendoraops-logo.jpeg' %}" alt="VendoraOps logo"></span>
+    <h1>VendoraOps</h1>
+    <p>Restaurant operations, inventory, cash control, paid-outs, POS sync, and reporting in one SaaS dashboard.</p>
+  </div>
+  <form method="post" class="card form-card">
+    {% csrf_token %}
+    <h2>Sign in</h2>
+    {{ form.as_p }}
+    <div class="form-actions auth-actions">
+      <button class="button primary" type="submit">Continue</button>
+      <a class="button ghost" href="{% url 'password_reset' %}">Forgot password?</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Manual End-of-Day Sales{% endblock %}
+{% block content %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Enter sales without live POS API</h2>
+      <span>Use saved menu items for inventory deduction, plus custom sales for unmapped items.</span>
+    </div>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      {{ form.as_p }}
+    </div>
+    <div class="table-wrap flat">
+      <table>
+        <thead><tr><th>Menu item</th><th>Price</th><th>Quantity</th></tr></thead>
+        <tbody>
+          {% for item in menu_items %}
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.selling_price|money2 }}</td>
+            <td>
+              <div class="stepper">
+                <button class="button small qty-minus" type="button">-</button>
+                <input name="qty_{{ item.id }}" type="number" min="0" step="1" value="0">
+                <button class="button small qty-plus" type="button">+</button>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No active menu items yet. Use custom sales amount for now.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="button primary" type="submit">Save manual sales</button>
+      <a class="button" href="{% url 'sale_list' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
+{% block page_js %}
+{{ block.super }}
+<script>
+  document.querySelectorAll(".stepper").forEach((stepper) => {
+    const input = stepper.querySelector("input");
+    stepper.querySelector(".qty-minus").addEventListener("click", () => {
+      input.value = Math.max(0, Number(input.value || 0) - 1);
+    });
+    stepper.querySelector(".qty-plus").addEventListener("click", () => {
+      input.value = Number(input.value || 0) + 1;
+    });
+  });
+</script>
+{% endblock %}

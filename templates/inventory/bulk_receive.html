@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block heading %}Add Purchase{% endblock %}
+{% block vendor_css %}<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css">{% endblock %}
+{% block vendor_js %}<script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js"></script>{% endblock %}
+{% block page_js %}
+<script>
+  (() => {
+    if (!window.Dropzone) return;
+    Dropzone.autoDiscover = false;
+    const input = document.querySelector("input[type='file'][name='invoice_file']");
+    if (!input) return;
+    const target = document.createElement("div");
+    target.className = "dropzone invoice-dropzone";
+    target.innerHTML = "<div class='dz-message'>Drop vendor invoice PDF here or click to choose</div>";
+    input.classList.add("visually-hidden");
+    input.insertAdjacentElement("afterend", target);
+    const dz = new Dropzone(target, {
+      url: window.location.href,
+      autoProcessQueue: false,
+      uploadMultiple: false,
+      maxFiles: 1,
+      acceptedFiles: ".pdf,image/*",
+      clickable: true
+    });
+    dz.on("addedfile", (file) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+    });
+  })();
+</script>
+{% endblock %}
+{% block content %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>Purchase Details</h2>
+    <span>Save a vendor invoice or delivery</span>
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="actions top-actions">
+      <button class="button" type="submit" name="parse_invoice" value="1">Read PDF</button>
+      <button class="button primary" type="submit">Save Purchase</button>
+      <a class="button" href="{% url 'purchase_list' %}">Cancel</a>
+    </div>
+    <div class="form-grid">
+      {{ form.as_p }}
+    </div>
+    <div class="table-wrap flat">
+      <table>
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Quantity</th>
+            <th>Total Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in parsed_rows %}
+          <tr>
+            <td>
+              <select name="ingredient_{{ forloop.counter0 }}">
+                <option value="">Select ingredient</option>
+                {% for ingredient in ingredients %}
+                  <option value="{{ ingredient.id }}" {% if row.ingredient_id == ingredient.id %}selected{% endif %}>{{ ingredient.name }} ({{ ingredient.unit }})</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input name="quantity_{{ forloop.counter0 }}" type="number" min="0" step="0.001" value="{{ row.quantity }}" placeholder="0.000"></td>
+            <td><input name="unit_cost_{{ forloop.counter0 }}" type="number" min="0" step="0.01" value="{{ row.total_cost }}" placeholder="0.00"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="button primary" type="submit">Save Purchase</button>
+      <a class="button" href="{% url 'purchase_list' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

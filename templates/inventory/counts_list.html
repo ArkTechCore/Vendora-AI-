@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block heading %}Inventory Counts{% endblock %}
+{% block content %}
+<div class="toolbar"><a class="button primary" href="{% url 'stock_count' %}">Start Count</a></div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Store</th><th>Status</th><th>Variance</th><th>Counted By</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for count in objects %}
+      <tr>
+        <td>{{ count.business_date }}</td>
+        <td>{{ count.store.name }}</td>
+        <td><span class="badge ok">{{ count.get_status_display }}</span></td>
+        <td>View report</td>
+        <td>{{ count.counted_by }}</td>
+        <td><a class="button small" href="{% url 'actual_vs_theoretical' %}?store={{ count.store.id }}&end_count={{ count.id }}">Variance</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="6">No inventory counts yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

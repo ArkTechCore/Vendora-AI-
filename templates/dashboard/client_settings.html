@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block heading %}Settings{% endblock %}
+{% block content %}
+<section class="settings-hero">
+  <div>
+    <p class="eyebrow">Workspace Setup</p>
+    <h2>{{ client.name }}</h2>
+    <p>Manage the setup that powers purchases, counts, POS sales, reports, and daily operations.</p>
+  </div>
+  <div class="settings-status">
+    <span class="badge ok">{{ client.get_status_display }}</span>
+    <strong>{{ stores|length }}</strong>
+    <small>Store{{ stores|length|pluralize }}</small>
+  </div>
+</section>
+
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Store Details</h2>
+      <span>Configured by VendoraOps admin</span>
+    </div>
+  </div>
+  <div class="store-detail-grid">
+    {% for store in stores %}
+    <article class="store-detail-card">
+      <div>
+        <strong>{{ store.name }}</strong>
+        <span>{{ store.code }}</span>
+      </div>
+      <p>{{ store.address|default:client.full_address|default:"Address missing" }}</p>
+      <p>{{ store.phone|default:"No phone on file" }}</p>
+      <span class="badge {% if store.is_active %}ok{% else %}warn{% endif %}">{% if store.is_active %}Active{% else %}Inactive{% endif %}</span>
+    </article>
+    {% empty %}
+    <article class="store-detail-card"><strong>No stores configured.</strong><p>Ask VendoraOps admin to add the store and full address.</p></article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="settings-section">
+  <div class="section-head">
+    <div>
+      <h2>Business Controls</h2>
+      <span>Daily setup tools</span>
+    </div>
+  </div>
+  <section class="settings-grid">
+    <article class="settings-card locked-card"><h2>Business Profile</h2><p>Business name, address, and store records are managed by VendoraOps admin.</p></article>
+    <a class="settings-card" href="{% url 'manager_list' %}"><h2>Managers</h2><p>Create managers and choose exactly what each one can do.</p></a>
+    <a class="settings-card" href="{% url 'vendor_list' %}"><h2>Vendors</h2><p>Manage suppliers used on purchases and receiving.</p></a>
+    <a class="settings-card" href="{% url 'ingredient_list' %}"><h2>Ingredients</h2><p>Inventory items, units, low stock levels, and costs.</p></a>
+    <a class="settings-card" href="{% url 'menu_item_list' %}"><h2>Menu Items & Recipes</h2><p>Recipe estimates and food-cost setup.</p></a>
+    <a class="settings-card" href="{% url 'pos_connection_list' %}"><h2>POS Connection</h2><p>Clover, Toast, Square, CSV, and manual import setup.</p></a>
+    <article class="settings-card"><h2>Categories</h2><p>Group ingredients, menu items, paid-outs, and reports. Coming soon.</p></article>
+    <a class="settings-card" href="{% url 'audit_log_list' %}"><h2>Audit Logs</h2><p>Track important business actions.</p></a>
+  </section>
+</section>
+{% endblock %}

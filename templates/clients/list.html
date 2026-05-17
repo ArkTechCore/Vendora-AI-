@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load render_table from django_tables2 %}
+{% block heading %}Clients{% endblock %}
+{% block content %}
+<section class="workbench-head">
+  <div>
+    <h2>Client Command Center</h2>
+    <p>Search, review, suspend, and reactivate operators from one controlled list.</p>
+  </div>
+  <a class="button primary" href="{% url 'client_create' %}">Create client and owner</a>
+</section>
+<form method="get" class="filter-bar">
+  {{ filter.form.as_p }}
+  <button class="button" type="submit">Apply</button>
+  <a class="button ghost" href="{% url 'client_list' %}">Reset</a>
+</form>
+<div class="card table-wrap">
+  {% render_table table %}
+</div>
+{% endblock %}

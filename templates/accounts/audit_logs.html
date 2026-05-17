@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block heading %}Audit Logs{% endblock %}
+{% block content %}
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Time</th><th>Action</th><th>User</th><th>Store</th><th>Message</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.created_at }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.user|default:"System" }}</td>
+        <td>{{ log.store|default:"-" }}</td>
+        <td>{{ log.message }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No audit events yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+<div class="risk-strip risk-{{ report.riskLevel|default:'medium' }}">
+  <span>{{ report.riskLevel|default:"medium" }} risk</span>
+  <strong>{{ report.riskScore|default:0 }}/100</strong>
+</div>
+
+<section class="report-section executive-summary">
+  <h3>Executive Summary</h3>
+  <p class="report-summary">{{ report.summary }}</p>
+</section>
+
+<section class="report-section">
+  <h3>Key Findings</h3>
+  <div class="finding-stack">
+    {% for finding in report.findings %}
+      <article class="finding-card severity-{{ finding.severity|default:'medium' }}">
+        <div>
+          <span class="badge {% if finding.severity == 'high' %}danger{% elif finding.severity == 'low' %}ok{% else %}warn{% endif %}">{{ finding.severity|default:"medium" }}</span>
+          <small class="finding-category">{{ finding.category|default:"Operational risk" }}</small>
+          <strong>{{ finding.title }}</strong>
+        </div>
+        <p>{{ finding.explanation }}</p>
+        <b class="finding-subhead">Evidence</b>
+        <ul>{% for item in finding.evidence %}<li>{{ item }}</li>{% endfor %}</ul>
+        <b class="finding-subhead">Recommendation</b>
+        <p>{{ finding.recommendation }}</p>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="next-actions">
+  <strong>Next Actions</strong>
+  <ol>{% for item in report.nextActions %}<li>{{ item }}</li>{% endfor %}</ol>
+</section>

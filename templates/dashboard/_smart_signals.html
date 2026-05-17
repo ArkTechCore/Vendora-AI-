@@ -1,0 +1,20 @@
+{% if smart_signals %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Smart Signals</h2>
+      <span>Planning signals for today</span>
+    </div>
+  </div>
+  <div class="signal-grid">
+    {% for signal in smart_signals %}
+    <article class="signal-card {{ signal.tone }}">
+      <div>
+        <strong>{{ signal.title }}</strong>
+      </div>
+      <p>{{ signal.body }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block heading %}Today at {{ user.store.name }}{% endblock %}
+{% block vendor_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>{% endblock %}
+{% block page_js %}{% include "dashboard/_chartjs_bootstrap.html" %}{% endblock %}
+{% block content %}
+{% include "dashboard/_dashboard.html" %}
+{% include "dashboard/_charts.html" %}
+{% include "dashboard/_smart_signals.html" %}
+<section class="actions">
+  <a class="button primary" href="{% url 'ai_auditor' %}">Run Operational Audit</a>
+  {% if user.can_manage_inventory %}
+    <a class="button" href="{% url 'bulk_receive' %}">Add Purchase</a>
+    <a class="button" href="{% url 'stock_count' %}">Start Inventory Count</a>
+  {% endif %}
+  {% if user.can_manage_paidouts %}<a class="button" href="{% url 'paidout_create' %}">Add Paid-Out</a>{% endif %}
+  {% if user.can_close_day %}<a class="button" href="{% url 'daily_close_create' %}">Close Day</a>{% endif %}
+</section>
+{% endblock %}

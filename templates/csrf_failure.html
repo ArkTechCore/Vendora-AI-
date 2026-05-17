@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Security check | VendoraOps{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <h2>Security check expired</h2>
+  <p>Your form security token was out of date. This can happen after switching users, using the Back button, or keeping a page open during logout/login.</p>
+  <div class="form-actions">
+    <a class="button primary" href="{% url 'login' %}">Reload sign in</a>
+    <a class="button" href="{% url 'dashboard' %}">Go to dashboard</a>
+  </div>
+</section>
+{% endblock %}

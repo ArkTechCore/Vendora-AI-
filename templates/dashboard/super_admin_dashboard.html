@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Platform Dashboard{% endblock %}
+{% block vendor_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>{% endblock %}
+{% block page_js %}{% include "dashboard/_platform_chartjs.html" %}{% endblock %}
+{% block content %}
+{% include "dashboard/_dashboard.html" %}
+<section class="actions">
+  <a class="button primary" href="{% url 'client_create' %}">Create Client</a>
+  <a class="button" href="{% url 'store_create' %}">Create Store</a>
+  <a class="button" href="{% url 'client_list' %}">View Clients</a>
+  <a class="button" href="{% url 'store_list' %}">View Stores</a>
+  <a class="button" href="{% url 'reports_dashboard' %}">Reports</a>
+</section>
+{{ platform_traffic|json_script:"platform-traffic-data" }}
+<section class="card analytics-card wide-chart">
+  <div class="section-head">
+    <div>
+      <h2>Platform Busy Hours</h2>
+      <span>{{ platform_traffic.window }} · peak {{ platform_traffic.peak_hour }} with {{ platform_traffic.peak_value }} events</span>
+    </div>
+  </div>
+  <div class="chart-frame"><canvas id="platformTrafficChart"></canvas></div>
+</section>
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Client Scale Summary</h2>
+      <span>Platform-safe totals only</span>
+    </div>
+  </div>
+  <div class="table-wrap flat">
+    <table>
+      <thead><tr><th>Client</th><th>Status</th><th>Total sales handled</th><th>Orders</th><th>Inventory handled</th><th>Items</th><th>Movements</th></tr></thead>
+      <tbody>
+      {% for row in platform_insights.client_rows %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.sales|money2 }}</td>
+          <td>{{ row.sales_count }}</td>
+          <td>{{ row.inventory_value|money2 }}</td>
+          <td>{{ row.inventory_items }}</td>
+          <td>{{ row.inventory_movements }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">No clients yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

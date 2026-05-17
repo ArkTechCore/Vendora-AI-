@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block heading %}{{ client_message.subject }}{% endblock %}
+{% block content %}
+<div class="toolbar top-actions">
+  <a class="button" href="{% url 'message_list' %}">Back to messages</a>
+  <a class="button primary" href="{% url 'message_create' %}">Reply / new message</a>
+</div>
+<article class="card message-detail-card">
+  <div class="message-meta">
+    <strong>{{ client_message.sender.get_full_name|default:client_message.sender.username }}</strong>
+    <span>{{ client_message.created_at|date:"M j, Y g:i A" }}</span>
+    <span>{% if client_message.audience == "all_clients" %}All clients{% elif client_message.client %}{{ client_message.client.name }}{% else %}Platform support{% endif %}</span>
+  </div>
+  <div class="message-body">{{ client_message.body|linebreaks }}</div>
+</article>
+{% endblock %}

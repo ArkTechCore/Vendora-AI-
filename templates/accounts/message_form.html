@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block heading %}New message{% endblock %}
+{% block content %}
+<form method="post" class="card form-card">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div class="form-actions">
+    <button class="button primary" type="submit">Send</button>
+    <a class="button" href="{% url 'message_list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

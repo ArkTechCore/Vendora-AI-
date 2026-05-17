@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Platform Reports{% endblock %}
+{% block content %}
+<section class="card report-export-card">
+  <div class="section-head">
+    <div>
+      <h2>Platform PDF Report</h2>
+      <span>Download platform-safe SaaS counts without exposing restaurant operating data.</span>
+    </div>
+  </div>
+  <form method="get" action="{% url 'report_pdf' %}" class="inline-form report-export-form" target="_blank">
+    {{ export_form.as_p }}
+    <div class="form-actions">
+      <button class="button primary" type="submit">View PDF</button>
+      <button class="button" type="submit" name="download" value="1">Download PDF</button>
+    </div>
+  </form>
+</section>
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Monthly Platform Summary</h2>
+      <span>{{ monthly.label }} - platform-safe totals</span>
+    </div>
+    <form method="get" class="month-picker">
+      <input type="month" name="month" value="{{ selected_month }}">
+      <button class="button" type="submit">View month</button>
+    </form>
+  </div>
+  <div class="pl-grid">
+    <div><span>Sales handled</span><strong>{{ monthly.sales|money2 }}</strong></div>
+    <div><span>Orders handled</span><strong>{{ monthly.orders }}</strong></div>
+    <div><span>Inventory handled</span><strong>{{ monthly.inventory_value|money2 }}</strong></div>
+    <div><span>Inventory movements</span><strong>{{ monthly.inventory_movements }}</strong></div>
+    <div><span>Active low-stock records</span><strong>{{ monthly.low_stock_count }}</strong></div>
+  </div>
+</section>
+<section class="grid">
+  {% for label, value in stats.items %}
+  <article class="metric-card">
+    <span>{{ label|title }}</span>
+    <strong>{{ value }}</strong>
+  </article>
+  {% endfor %}
+</section>
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Client Totals</h2>
+      <span>Sales and inventory handled by VendoraOps, without client-sensitive operations detail.</span>
+    </div>
+  </div>
+  <div class="table-wrap flat">
+    <table>
+      <thead><tr><th>Client</th><th>Status</th><th>Total sales handled</th><th>Orders</th><th>Inventory handled</th><th>Items</th><th>Movements</th></tr></thead>
+      <tbody>
+      {% for row in platform_insights.client_rows %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.sales|money2 }}</td>
+          <td>{{ row.sales_count }}</td>
+          <td>{{ row.inventory_value|money2 }}</td>
+          <td>{{ row.inventory_items }}</td>
+          <td>{{ row.inventory_movements }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">No client totals yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="card smart-panel">
+  <h2>Platform-safe reporting</h2>
+  <p class="muted">Super Admin sees SaaS totals only: aggregate sales handled, order counts, inventory value handled, item counts, and movement volume. Paid-out notes, receipts, vendor pricing, store-level rows, and restaurant cash details stay out of platform reports.</p>
+</section>
+{% endblock %}

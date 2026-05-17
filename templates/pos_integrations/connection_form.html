@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block heading %}POS API Setting{% endblock %}
+{% block content %}
+<form method="post" class="card form-card pos-api-form">
+  {% csrf_token %}
+  <p class="muted">Paste the POS company API key once. After save it is hidden, and changing it requires your account password.</p>
+  {{ form.non_field_errors }}
+  <div class="form-grid">
+    <p>{{ form.store.label_tag }}{{ form.store }}{{ form.store.errors }}</p>
+    <p>{{ form.provider.label_tag }}{{ form.provider }}{{ form.provider.errors }}</p>
+    <p>{{ form.connection_name.label_tag }}{{ form.connection_name }}{{ form.connection_name.errors }}</p>
+    <p>{{ form.environment.label_tag }}{{ form.environment }}{{ form.environment.errors }}</p>
+  </div>
+  <p class="api-key-box">{{ form.access_token.label_tag }}{{ form.access_token }}{{ form.access_token.errors }}<span class="helptext">{{ form.access_token.help_text }}</span></p>
+  <div class="form-grid">
+    <p>{{ form.external_merchant_id.label_tag }}{{ form.external_merchant_id }}{{ form.external_merchant_id.errors }}</p>
+    <p>{{ form.external_location_id.label_tag }}{{ form.external_location_id }}{{ form.external_location_id.errors }}</p>
+    <p>{{ form.api_client_id.label_tag }}{{ form.api_client_id }}{{ form.api_client_id.errors }}</p>
+  </div>
+  <details class="advanced-box">
+    <summary>Advanced credentials</summary>
+    <div class="form-grid">
+      <p>{{ form.client_secret.label_tag }}{{ form.client_secret }}{{ form.client_secret.errors }}</p>
+      <p>{{ form.refresh_token.label_tag }}{{ form.refresh_token }}{{ form.refresh_token.errors }}</p>
+      <p>{{ form.webhook_secret.label_tag }}{{ form.webhook_secret }}{{ form.webhook_secret.errors }}</p>
+      <p>{{ form.token_expires_at.label_tag }}{{ form.token_expires_at }}{{ form.token_expires_at.errors }}</p>
+    </div>
+    <p>{{ form.scopes.label_tag }}{{ form.scopes }}{{ form.scopes.errors }}</p>
+  </details>
+  <div class="form-grid">
+    <p>{{ form.auto_sync_enabled.label_tag }}{{ form.auto_sync_enabled }}{{ form.auto_sync_enabled.errors }}</p>
+    <p>{{ form.is_active.label_tag }}{{ form.is_active }}{{ form.is_active.errors }}</p>
+  </div>
+  <p>{{ form.current_password.label_tag }}{{ form.current_password }}{{ form.current_password.errors }}<span class="helptext">{{ form.current_password.help_text }}</span></p>
+  {{ form.client.as_hidden }}
+  <div class="form-actions">
+    <button class="button primary" type="submit">Save POS API setting</button>
+    <a class="button" href="{% url 'pos_connection_list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

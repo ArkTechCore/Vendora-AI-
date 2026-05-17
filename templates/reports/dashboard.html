@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Reports{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a class="button primary" href="{% url 'actual_vs_theoretical' %}">Inventory Variance</a>
+</div>
+<section class="card report-export-card">
+  <div class="section-head">
+    <div>
+      <h2>PDF Reports</h2>
+      <span>Build a full mixed report or choose one section with date and store filters.</span>
+    </div>
+  </div>
+  <form method="get" action="{% url 'report_pdf' %}" class="inline-form report-export-form" target="_blank">
+    {{ export_form.as_p }}
+    <div class="form-actions">
+      <button class="button primary" type="submit">View PDF</button>
+      <button class="button" type="submit" name="download" value="1">Download PDF</button>
+    </div>
+  </form>
+</section>
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Monthly Summary</h2>
+      <span>{{ monthly.label }} - in-page report</span>
+    </div>
+    <form method="get" class="month-picker">
+      <input type="month" name="month" value="{{ selected_month }}">
+      <button class="button" type="submit">View month</button>
+    </form>
+  </div>
+  <div class="pl-grid">
+    <div><span>Sales</span><strong>{{ monthly.sales|money2 }}</strong></div>
+    <div><span>Orders</span><strong>{{ monthly.orders }}</strong></div>
+    <div><span>Purchases</span><strong>{{ monthly.purchases|money2 }}</strong></div>
+    <div><span>Paid-outs</span><strong>{{ monthly.paidouts|money2 }}</strong></div>
+    <div><span>Short / over</span><strong>{{ monthly.short_over|money2 }}</strong></div>
+    <div><span>Inventory value</span><strong>{{ monthly.inventory_value|money2 }}</strong></div>
+    <div><span>Inventory movements</span><strong>{{ monthly.inventory_movements }}</strong></div>
+    <div><span>Low stock</span><strong>{{ monthly.low_stock_count }}</strong></div>
+  </div>
+  {% if monthly.profit_loss %}
+  <div class="table-wrap flat monthly-table">
+    <table>
+      <thead><tr><th>Net sales</th><th>Food COGS</th><th>Gross profit</th><th>Operating expenses</th><th>Cash variance</th><th>Est. profit</th></tr></thead>
+      <tbody><tr>
+        <td>{{ monthly.profit_loss.net_sales|money2 }}</td>
+        <td>{{ monthly.profit_loss.food_cogs|money2 }}</td>
+        <td>{{ monthly.profit_loss.gross_profit|money2 }}</td>
+        <td>{{ monthly.profit_loss.operating_expenses|money2 }}</td>
+        <td>{{ monthly.profit_loss.cash_variance|money2 }}</td>
+        <td>{{ monthly.profit_loss.net_profit|money2 }}</td>
+      </tr></tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+<section class="grid">
+  <article class="metric-card"><span>Paid-Outs</span><strong>{{ summary.total_paidouts|money2 }}</strong></article>
+  <article class="metric-card"><span>Cash sales</span><strong>{{ summary.cash_sales|money2 }}</strong></article>
+  <article class="metric-card"><span>Card sales</span><strong>{{ summary.card_sales|money2 }}</strong></article>
+  <article class="metric-card"><span>Short / over</span><strong>{{ summary.short_over|money2 }}</strong></article>
+  <article class="metric-card"><span>Inventory value</span><strong>{{ summary.inventory_value|money2 }}</strong></article>
+  <article class="metric-card"><span>Low stock</span><strong>{{ summary.low_stock|length }}</strong></article>
+</section>
+{% if profit_loss %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <div>
+      <h2>Profit / Loss</h2>
+      <span>{{ profit_loss.period }} - estimated operator P&L with inventory spend separated</span>
+    </div>
+  </div>
+  <div class="pl-grid">
+    <div><span>Gross sales</span><strong>{{ profit_loss.revenue|money2 }}</strong></div>
+    <div><span>Net sales</span><strong>{{ profit_loss.net_sales|money2 }}</strong></div>
+    <div><span>Cash sales</span><strong>{{ profit_loss.cash_sales|money2 }}</strong></div>
+    <div><span>Card sales</span><strong>{{ profit_loss.card_sales|money2 }}</strong></div>
+    <div><span>Food COGS</span><strong>{{ profit_loss.food_cogs|money2 }}</strong></div>
+    <div><span>Food cost %</span><strong>{{ profit_loss.food_cost_percent|floatformat:1 }}%</strong></div>
+    <div><span>Gross profit</span><strong>{{ profit_loss.gross_profit|money2 }}</strong></div>
+    <div><span>Purchase spend</span><strong>{{ profit_loss.purchase_spend|money2 }}</strong></div>
+    <div><span>Inventory paid-outs</span><strong>{{ profit_loss.inventory_paidouts|money2 }}</strong></div>
+    <div><span>Inventory cash outflow</span><strong>{{ profit_loss.inventory_cash_outflow|money2 }}</strong></div>
+    <div><span>Operating expenses</span><strong>{{ profit_loss.operating_expenses|money2 }}</strong></div>
+    <div><span>Short / over</span><strong>{{ profit_loss.cash_variance|money2 }}</strong></div>
+    <div><span>Estimated operating profit</span><strong>{{ profit_loss.net_profit|money2 }}</strong></div>
+    <div><span>Cash after inventory</span><strong>{{ profit_loss.cash_flow_after_inventory|money2 }}</strong></div>
+  </div>
+</section>
+{% endif %}
+<section class="two-col">
+  <div class="card"><h2>Paid-outs by category</h2>{% for row in summary.paidouts_by_category %}<p>{{ row.category|title }} <strong>{{ row.total|money2 }}</strong></p>{% empty %}<p>No paid-outs.</p>{% endfor %}</div>
+  <div class="card"><h2>Paid-outs by store</h2>{% for row in summary.paidouts_by_store %}<p>{{ row.store__name }} <strong>{{ row.total|money2 }}</strong></p>{% empty %}<p>No store paid-outs.</p>{% endfor %}</div>
+  <div class="card"><h2>Low stock</h2>{% for item in summary.low_stock %}<p>{{ item.name }} <strong>{{ item.current_quantity|number2 }} {{ item.unit }}</strong></p>{% empty %}<p>No low stock items.</p>{% endfor %}</div>
+  <div class="card"><h2>Daily close history</h2>{% for close in summary.daily_closes %}<p>{{ close.business_date }} <strong>{{ close.short_over|money2 }}</strong></p>{% empty %}<p>No closes.</p>{% endfor %}</div>
+</section>
+{% endblock %}

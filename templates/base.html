@@ -1,0 +1,98 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}VendoraOps{% endblock %}</title>
+  {% block vendor_css %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  {% if user.is_authenticated %}
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'dashboard' %}">
+      <span class="brand-mark image-mark"><img src="{% static 'img/vendoraops-logo.jpeg' %}" alt="VendoraOps logo"></span>
+      <span><strong>VendoraOps</strong><small>Restaurant ops layer</small></span>
+    </a>
+    <nav>
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      {% if user.is_super_admin %}
+        <a href="{% url 'client_list' %}">Clients</a>
+        <a href="{% url 'store_list' %}">Stores</a>
+        <a href="{% url 'reports_dashboard' %}">Reports</a>
+        <a href="{% url 'settings_hub' %}">Settings</a>
+      {% endif %}
+      {% if user.is_client_owner %}
+        <a href="{% url 'purchase_list' %}">Purchases</a>
+        <a href="{% url 'inventory_count_list' %}">Inventory Counts</a>
+        <a href="{% url 'paidout_list' %}">Paid-Outs</a>
+        <a href="{% url 'daily_close_list' %}">Daily Close</a>
+        <a href="{% url 'pos_connection_list' %}">POS</a>
+        <a href="{% url 'reports_dashboard' %}">Reports</a>
+        <a class="nav-ai-auditor" href="{% url 'ai_auditor' %}">AI Auditor</a>
+        <a href="{% url 'settings_hub' %}">Settings</a>
+      {% endif %}
+      {% if user.is_manager %}
+        {% if user.can_manage_inventory %}
+          <a href="{% url 'purchase_list' %}">Purchases</a>
+          <a href="{% url 'inventory_count_list' %}">Inventory Counts</a>
+        {% endif %}
+        {% if user.can_manage_paidouts %}<a href="{% url 'paidout_list' %}">Paid-Outs</a>{% endif %}
+        {% if user.can_close_day %}<a href="{% url 'daily_close_list' %}">Daily Close</a>{% endif %}
+        {% if user.can_manage_pos %}<a href="{% url 'pos_connection_list' %}">POS</a>{% endif %}
+        {% if user.can_view_reports %}<a href="{% url 'reports_dashboard' %}">Reports</a>{% endif %}
+        <a class="nav-ai-auditor" href="{% url 'ai_auditor' %}">AI Auditor</a>
+      {% endif %}
+      <a class="nav-message-link" href="{% url 'message_list' %}">
+        Messages
+        {% if unread_message_count %}<span class="nav-dot" aria-label="{{ unread_message_count }} unread messages"></span>{% endif %}
+      </a>
+      <a href="{% url 'password_change' %}">Security</a>
+    </nav>
+    <form method="post" action="{% url 'logout' %}" class="sidebar-logout">{% csrf_token %}<button>Logout</button></form>
+  </aside>
+  {% endif %}
+  <main class="{% if user.is_authenticated %}shell{% else %}auth-shell{% endif %}">
+    {% if user.is_authenticated %}
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">VendoraOps</p>
+        <h1>{% block heading %}Restaurant operations, inventory, cash control, paid-outs, POS sync, and reporting in one SaaS dashboard.{% endblock %}</h1>
+      </div>
+      <div class="user-chip">{{ user.get_full_name|default:user.username }}</div>
+    </header>
+    {% endif %}
+    {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block vendor_js %}{% endblock %}
+  <script>
+    (() => {
+      const csrfCookieName = "csrftoken";
+      const readCookie = (name) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+        return "";
+      };
+      const refreshCsrfInputs = () => {
+        const token = readCookie(csrfCookieName);
+        if (!token) return;
+        document.querySelectorAll("form[method='post' i] input[name='csrfmiddlewaretoken']").forEach((input) => {
+          input.value = token;
+        });
+      };
+      refreshCsrfInputs();
+      window.addEventListener("pageshow", refreshCsrfInputs);
+      document.addEventListener("submit", (event) => {
+        const form = event.target;
+        if (form instanceof HTMLFormElement && form.method.toLowerCase() === "post") {
+          refreshCsrfInputs();
+        }
+      }, true);
+    })();
+  </script>
+  {% block page_js %}{% endblock %}
+</body>
+</html>

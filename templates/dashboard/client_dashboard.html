@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block heading %}Business Dashboard{% endblock %}
+{% block vendor_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>{% endblock %}
+{% block page_js %}{% include "dashboard/_chartjs_bootstrap.html" %}{% endblock %}
+{% block content %}
+{% include "dashboard/_dashboard.html" %}
+{% include "dashboard/_charts.html" %}
+{% include "dashboard/_smart_signals.html" %}
+<section class="actions">
+  <a class="button primary" href="{% url 'ai_auditor' %}">Run Operational Audit</a>
+  <a class="button" href="{% url 'bulk_receive' %}">Add Purchase</a>
+  <a class="button" href="{% url 'stock_count' %}">Start Count</a>
+  <a class="button" href="{% url 'paidout_create' %}">Add Paid-Out</a>
+  <a class="button" href="{% url 'daily_close_create' %}">Close Day</a>
+  <a class="button" href="{% url 'reports_dashboard' %}">View Reports</a>
+  <a class="button" href="{% url 'settings_hub' %}">Open Settings</a>
+</section>
+{% if smart_alerts %}
+<section class="card smart-panel">
+  <div class="section-head"><h2>Needs Attention</h2><span>Setup and inventory signals</span></div>
+  <div class="alert-list">
+    {% for alert in smart_alerts|slice:":4" %}
+      <a href="{% url alert.url %}" class="alert-row"><strong>{{ alert.title }}</strong><span>{{ alert.body }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

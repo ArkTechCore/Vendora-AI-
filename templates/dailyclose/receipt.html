@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load table_tags %}
+{% block heading %}Daily Close Receipt{% endblock %}
+{% block content %}
+<section class="card smart-panel receipt-panel">
+  <div class="section-head">
+    <div>
+      <h2>{{ close.store.name }} - {{ close.business_date|date:"M j, Y" }}</h2>
+      <span>Closed by {{ close.closed_by }} on {{ close.created_at|date:"M j, Y g:i A" }}</span>
+    </div>
+    <button class="button" type="button" onclick="window.print()">Print</button>
+  </div>
+  <div class="pl-grid">
+    <div><span>Opening balance</span><strong>{{ close.opening_cash|money2 }}</strong></div>
+    <div><span>Cash sales</span><strong>{{ close.cash_sales|money2 }}</strong></div>
+    <div><span>Card sales</span><strong>{{ close.card_sales|money2 }}</strong></div>
+    <div><span>Cash paid-outs</span><strong>{{ close.cash_paidouts|money2 }}</strong></div>
+    <div><span>Expected cash</span><strong>{{ close.expected_cash|money2 }}</strong></div>
+    <div><span>Ending counter cash</span><strong>{{ close.counted_cash|money2 }}</strong></div>
+    <div><span>Short / over</span><strong>{{ close.short_over|money2 }}</strong></div>
+  </div>
+</section>
+<section class="two-col">
+  <div class="card">
+    <h2>Sales Receipts</h2>
+    {% for sale in sales %}
+      <p><span>{{ sale.external_order_id }}</span><strong>{{ sale.total_amount|money2 }}</strong></p>
+    {% empty %}
+      <p>No sales for this date.</p>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <h2>Cash Paid-Outs</h2>
+    {% for paidout in paidouts %}
+      <p><span>{{ paidout.get_category_display }} - {{ paidout.vendor_payee|default:"-" }}</span><strong>{{ paidout.amount|money2 }}</strong></p>
+    {% empty %}
+      <p>No cash paid-outs for this date.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

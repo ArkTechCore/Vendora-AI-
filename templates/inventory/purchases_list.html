@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block heading %}Purchases{% endblock %}
+{% block content %}
+<div class="toolbar"><a class="button primary" href="{% url 'bulk_receive' %}">Add Purchase</a></div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Store</th><th>Vendor</th><th>Invoice #</th><th>Total</th><th>Status</th><th>Added By</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for purchase in objects %}
+      <tr>
+        <td>{% if purchase.invoice_date %}{{ purchase.invoice_date|date:"M j, Y" }}{% else %}{{ purchase.received_at|date:"M j, Y" }}{% endif %}</td>
+        <td>{{ purchase.store.name }}</td>
+        <td>{{ purchase.vendor|default:"-" }}</td>
+        <td>{{ purchase.invoice_number|default:"-" }}</td>
+        <td>{{ purchase.total|floatformat:2 }}</td>
+        <td><span class="badge ok">{{ purchase.get_status_display }}</span></td>
+        <td>{{ purchase.received_by|default:"-" }}</td>
+        <td><a class="button small" href="{% url 'bulk_receive' %}">Add</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="8">No purchases yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

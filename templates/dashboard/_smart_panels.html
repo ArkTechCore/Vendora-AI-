@@ -1,0 +1,59 @@
+{% if setup_progress %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>Setup checklist</h2>
+    <span>{{ setup_progress|length }} steps</span>
+  </div>
+  <div class="checklist">
+    {% for item in setup_progress %}
+      <a href="{% url item.url %}" class="check-row {% if item.done %}done{% endif %}">
+        <span>{% if item.done %}Done{% else %}Next{% endif %}</span>
+        <strong>{{ item.label }}</strong>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if smart_alerts %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>Smart alerts</h2>
+    <span>Operational focus</span>
+  </div>
+  <div class="alert-list">
+    {% for alert in smart_alerts %}
+      <a href="{% url alert.url %}" class="alert-row">
+        <strong>{{ alert.title }}</strong>
+        <span>{{ alert.body }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if profit_insights %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>Menu profit hints</h2>
+    <span>Recipe-based estimate</span>
+  </div>
+  <div class="table-wrap flat">
+    <table>
+      <thead><tr><th>Item</th><th>Price</th><th>Recipe cost</th><th>Profit</th><th>Food cost</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for item in profit_insights %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>{{ item.price }}</td>
+          <td>{{ item.cost|floatformat:2 }}</td>
+          <td>{{ item.profit|floatformat:2 }}</td>
+          <td>{{ item.food_cost_percent|floatformat:1 }}%</td>
+          <td><span class="badge {% if item.status == 'Healthy' %}ok{% else %}warn{% endif %}">{{ item.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}

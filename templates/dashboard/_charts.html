@@ -1,0 +1,36 @@
+{% if dashboard_charts %}
+{{ dashboard_charts.chartjs|json_script:"dashboard-chart-data" }}
+<section class="analytics-stack">
+  <article class="card analytics-card wide-chart">
+    <h2>Weekly sales trend</h2>
+    <p>Day by day sales activity for the last 7 days.</p>
+    <div class="chart-frame"><canvas id="weeklySalesChart"></canvas></div>
+  </article>
+
+  <article class="card analytics-card">
+    <h2>Payment method split</h2>
+    <p>Current month breakdown by payment method.</p>
+    <div class="chart-frame small-chart"><canvas id="paymentSplitChart"></canvas></div>
+  </article>
+
+  <article class="card analytics-card">
+    <h2>Category split</h2>
+    <p>Current month inventory versus expense totals.</p>
+    <div class="chart-frame small-chart"><canvas id="categorySplitChart"></canvas></div>
+  </article>
+
+  <article class="card analytics-card">
+    <div class="section-head"><h2>Low Stock</h2><span>Current vs reorder level</span></div>
+    <div class="stock-bars">
+      {% for item in dashboard_charts.low_stock %}
+      <div class="stock-row">
+        <div><strong>{{ item.label }}</strong><span>{{ item.value|floatformat:1 }} / {{ item.target|floatformat:1 }} {{ item.unit }}</span></div>
+        <div class="progress instant-tooltip" data-tooltip="{{ item.label }}: {{ item.value|floatformat:1 }} / {{ item.target|floatformat:1 }} {{ item.unit }}"><span style="width: {{ item.percent }}%"></span></div>
+      </div>
+      {% empty %}
+      <p class="muted">No low stock items right now.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endif %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block heading %}Platform Settings{% endblock %}
+{% block content %}
+<section class="settings-hero">
+  <div>
+    <p class="eyebrow">VendoraOps Admin</p>
+    <h2>Platform Control Center</h2>
+    <p>Manage clients, stores, access, platform health, and rollout settings from one place.</p>
+  </div>
+  <div class="settings-status">
+    <span class="badge ok">Online</span>
+    <strong>{{ stats.total_clients|default:0 }}</strong>
+    <small>Clients</small>
+  </div>
+</section>
+
+<section class="settings-grid">
+  <a class="settings-card" href="{% url 'client_list' %}"><h2>Clients</h2><p>Create, edit, suspend, and reactivate restaurant businesses.</p></a>
+  <a class="settings-card" href="{% url 'store_list' %}"><h2>Stores</h2><p>Manage restaurant locations, codes, and full addresses for local signals.</p></a>
+  <a class="settings-card" href="{% url 'reports_dashboard' %}"><h2>Platform Reports</h2><p>View platform-safe SaaS counts and status reporting.</p></a>
+  <article class="settings-card"><h2>Auth & Security</h2><p>Password reset, role access, session controls, and audit logging are active.</p></article>
+  <article class="settings-card"><h2>Email / SMTP</h2><p>SMTP is configured through environment variables for production password resets.</p></article>
+  <article class="settings-card"><h2>System Info</h2><p>Use this area for deployment health, background jobs, and future billing settings.</p></article>
+</section>
+{% endblock %}

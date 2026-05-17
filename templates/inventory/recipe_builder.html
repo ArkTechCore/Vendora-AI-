@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block heading %}Recipe Builder{% endblock %}
+{% block content %}
+<form method="get" class="card form-card compact-form">
+  {{ selector.menu_item.label_tag }}
+  {{ selector.menu_item }}
+  <button class="button primary" type="submit">Load recipe</button>
+</form>
+
+{% if menu_item %}
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>{{ menu_item.name }}</h2>
+    <span>Theoretical estimate | Price {{ menu_item.selling_price }} | Est. cost {{ menu_item.recipe_cost|floatformat:2 }} | Food cost {{ menu_item.food_cost_percent|floatformat:1 }}%</span>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="menu_item" value="{{ menu_item.id }}">
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+      <div class="message error">{{ formset.non_form_errors }}</div>
+    {% endif %}
+    <div class="table-wrap flat">
+      <table>
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Quantity used</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in formset %}
+          <tr>
+            <td>
+              {{ form.id }}
+              {{ form.ingredient }}
+              {{ form.ingredient.errors }}
+            </td>
+            <td>
+              {{ form.quantity_used }}
+              {{ form.quantity_used.errors }}
+            </td>
+            <td class="center-cell">
+              {% if form.instance.pk %}{{ form.DELETE }}{% else %}<span class="muted">New row</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="button primary" type="submit">Save full recipe</button>
+      <a class="button" href="{% url 'menu_item_list' %}">Back to menu items</a>
+    </div>
+  </form>
+</section>
+{% else %}
+<section class="card smart-panel">
+  <h2>Select a menu item</h2>
+  <p class="muted">Pick one menu item, then add all recipe ingredients in one screen.</p>
+</section>
+{% endif %}
+{% endblock %}

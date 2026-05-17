@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block heading %}Actual vs Theoretical{% endblock %}
+{% block content %}
+<form method="get" class="card form-card">
+  {{ form.as_p }}
+  <button class="button primary" type="submit">Run report</button>
+</form>
+
+<section class="card smart-panel">
+  <div class="section-head">
+    <h2>Variance analysis</h2>
+    <span>Actual comes from counts and purchases. Theoretical comes from POS sales and recipe estimates.</span>
+  </div>
+  <div class="table-wrap flat">
+    <table>
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th>Begin</th>
+          <th>Purch</th>
+          <th>End</th>
+          <th>Actual</th>
+          <th>Theoretical</th>
+          <th>Variance</th>
+          <th>Waste</th>
+          <th>Variance $</th>
+          <th>Variance %</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.ingredient.name }}</td>
+          <td>{{ row.begin_qty|floatformat:3 }}</td>
+          <td>{{ row.purchases|floatformat:3 }}</td>
+          <td>{{ row.end_qty|floatformat:3 }}</td>
+          <td>{{ row.actual_qty|floatformat:3 }}</td>
+          <td>{{ row.theoretical_qty|floatformat:3 }}</td>
+          <td>{{ row.variance_qty|floatformat:3 }}</td>
+          <td>{{ row.waste_qty|floatformat:3 }}</td>
+          <td>{{ row.variance_value|floatformat:2 }}</td>
+          <td>{% if row.variance_percent is not None %}{{ row.variance_percent|floatformat:1 }}%{% else %}-{% endif %}</td>
+          <td><span class="badge {% if row.status == 'OK' %}ok{% else %}warn{% endif %}">{{ row.status }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="11">Close at least two inventory counts for this store to run AvT.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
