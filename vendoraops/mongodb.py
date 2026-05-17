@@ -8,9 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 try:
+    import certifi
     from pymongo import MongoClient
     from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 except ImportError:  # pragma: no cover - handled at runtime in deployments
+    certifi = None
     MongoClient = None
     PyMongoError = Exception
     ServerSelectionTimeoutError = Exception
@@ -27,9 +29,11 @@ def get_mongo_client():
         return None
     return MongoClient(
         uri,
-        serverSelectionTimeoutMS=3000,
-        connectTimeoutMS=3000,
-        socketTimeoutMS=8000,
+        tls=True,
+        tlsCAFile=certifi.where() if certifi else None,
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=15000,
         retryWrites=True,
     )
 
