@@ -715,6 +715,8 @@ a.settings-card:hover {
 .audit-pill.risk-high { background: rgba(220, 38, 38, .26); border-color: rgba(252, 165, 165, .45); }
 .audit-pill.risk-medium { background: rgba(180, 83, 9, .30); border-color: rgba(253, 230, 138, .45); }
 .audit-pill.risk-low { background: rgba(4, 120, 87, .30); border-color: rgba(167, 243, 208, .48); }
+.audit-pill.mongo-ok { background: rgba(4, 120, 87, .30); border-color: rgba(167, 243, 208, .48); }
+.audit-pill.mongo-warn { background: rgba(180, 83, 9, .30); border-color: rgba(253, 230, 138, .45); }
 .store-switcher {
   display: grid;
   gap: 6px;

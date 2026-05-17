@@ -1,4 +1,5 @@
 ﻿import json
+import logging
 import re
 import urllib.error
 import urllib.request
@@ -15,8 +16,11 @@ from inventory.models import Ingredient
 from paidouts.models import PaidOut
 from pos_integrations.models import ImportedSale
 from stores.models import Store
+from vendoraops.mongodb import AI_REPORTS, INVESTIGATION_REPORTS, insert_document, ping_mongodb
 from .models import AIReport
 
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are an operational restaurant audit intelligence system. Investigate "
@@ -50,7 +54,7 @@ def analyze_operations(user, store_id=None, date_range="yesterday", question="An
     report.pop("_source", None)
     report = clean_report_for_display(report)
     saved = AIReport.objects.create(store=store, date_range=date_range, question=question, report=report, source=source)
-    mongo_id = mirror_report_to_mongo(saved, data)
+    mongo_id = mirror_report_to_mongo(saved, data, audit_type="operational_audit")
     if mongo_id:
         saved.mongo_document_id = mongo_id
         saved.save(update_fields=["mongo_document_id"])
@@ -78,7 +82,10 @@ def investigate_finding(user, store_id=None, finding_id=None, context=""):
     report.pop("_source", None)
     report = clean_report_for_display(report)
     saved = AIReport.objects.create(store=store, date_range="investigation", question=question, report=report, source=source)
-    mirror_report_to_mongo(saved, data)
+    mongo_id = mirror_investigation_to_mongo(saved, data, finding_id=finding_id, context=context)
+    if mongo_id:
+        saved.mongo_document_id = mongo_id
+        saved.save(update_fields=["mongo_document_id"])
     return {"id": saved.id, "store": store.name, "source": source, "report": report}
 
 
@@ -168,6 +175,7 @@ def dashboard_context(user, store_id=None):
         "kpi_trends": _kpi_trends(data),
         "suspicious_paidouts": suspicious,
         "recent_reports": AIReport.objects.filter(store=store)[:5],
+        "mongodb_status": _mongodb_status_label(),
     }
 
 
@@ -391,36 +399,77 @@ def _call_gemini(data, question):
         parsed = json.loads(text)
     except ValueError:
         match = re.search(r"\{.*\}", text, re.DOTALL)
-        parsed = json.loads(match.group(0)) if match else None
+        try:
+            parsed = json.loads(match.group(0)) if match else None
+        except ValueError:
+            logger.warning("Gemini returned malformed JSON; using rule-based audit fallback")
+            return None
     if isinstance(parsed, dict):
         parsed["_source"] = "gemini"
     return parsed
 
 
-def mirror_report_to_mongo(ai_report, data):
-    uri = getattr(settings, "MONGODB_URI", "")
-    if not uri:
-        return ""
-    try:
-        from pymongo import MongoClient
-    except ImportError:
-        return ""
-    try:
-        client = MongoClient(uri, serverSelectionTimeoutMS=2500)
-        db_name = getattr(settings, "MONGODB_DB", "vendora_ai")
-        db = client[db_name]
-        result = db.aiReports.insert_one({
-            "storeId": ai_report.store_id,
-            "dateRange": ai_report.date_range,
-            "question": ai_report.question,
-            "report": ai_report.report,
-            "context": data,
-            "source": ai_report.source,
-            "createdAt": ai_report.created_at.isoformat(),
-        })
-        return str(result.inserted_id)
-    except Exception:
-        return ""
+def mirror_report_to_mongo(ai_report, data, audit_type="operational_audit"):
+    report = ai_report.report or {}
+    document = {
+        "djangoReportId": ai_report.id,
+        "storeId": str(ai_report.store_id),
+        "storeName": ai_report.store.name,
+        "clientName": ai_report.store.client.name,
+        "dateRange": ai_report.date_range,
+        "auditPeriod": {"startDate": data.get("startDate"), "endDate": data.get("endDate")},
+        "question": ai_report.question,
+        "riskLevel": report.get("riskLevel"),
+        "riskScore": report.get("riskScore"),
+        "summary": report.get("summary"),
+        "findings": report.get("findings", []),
+        "nextActions": report.get("nextActions", []),
+        "source": ai_report.source,
+        "auditType": audit_type,
+        "generatedAt": ai_report.created_at,
+        "createdAt": ai_report.created_at,
+        "operationalContext": data,
+    }
+    mongo_id = insert_document(AI_REPORTS, document)
+    if mongo_id:
+        logger.info("Saved AI report %s to MongoDB aiReports as %s", ai_report.id, mongo_id)
+    return mongo_id
+
+
+def mirror_investigation_to_mongo(ai_report, data, finding_id=None, context=""):
+    report = ai_report.report or {}
+    historical = data.get("historicalPatterns", {})
+    document = {
+        "djangoReportId": ai_report.id,
+        "storeId": str(ai_report.store_id),
+        "storeName": ai_report.store.name,
+        "clientName": ai_report.store.client.name,
+        "investigationType": "risk_pattern_investigation",
+        "findingId": finding_id or "selected finding",
+        "context": context,
+        "comparedPeriods": {
+            "startDate": data.get("startDate"),
+            "endDate": data.get("endDate"),
+            "comparisonWindow": "prior seven days",
+        },
+        "riskLevel": report.get("riskLevel"),
+        "riskScore": report.get("riskScore"),
+        "summary": report.get("summary"),
+        "findings": report.get("findings", []),
+        "nextActions": report.get("nextActions", []),
+        "repeatedAnomalies": data.get("heuristics", []),
+        "employeePatterns": historical.get("paidoutsByEmployee", []),
+        "inventoryPressure": historical.get("repeatedInventoryShortages", []),
+        "cashAdjustmentCount": historical.get("cashAdjustmentCount", 0),
+        "source": ai_report.source,
+        "generatedAt": ai_report.created_at,
+        "createdAt": ai_report.created_at,
+        "operationalContext": data,
+    }
+    mongo_id = insert_document(INVESTIGATION_REPORTS, document)
+    if mongo_id:
+        logger.info("Saved investigation report %s to MongoDB investigationReports as %s", ai_report.id, mongo_id)
+    return mongo_id
 
 
 def _get_store(user, store_id=None):
@@ -432,6 +481,11 @@ def _get_store(user, store_id=None):
 
 def _source_label(source):
     return "Gemini operational analysis" if source == "gemini" else "Rule-based audit review"
+
+
+def _mongodb_status_label():
+    ok, _ = ping_mongodb()
+    return "MongoDB Connected" if ok else "MongoDB Unavailable"
 
 
 def clean_report_for_display(report):

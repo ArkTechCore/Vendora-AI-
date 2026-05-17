@@ -195,6 +195,28 @@ GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-2.5-flash")
 MONGODB_URI = env("MONGODB_URI", default="")
 MONGODB_DB = env("MONGODB_DB", default="vendora_ai")
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "vendoraops.mongodb": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "ai_auditor.services": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'

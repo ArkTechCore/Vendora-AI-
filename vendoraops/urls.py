@@ -20,10 +20,12 @@ from django.contrib import admin
 from django.urls import include, path
 from health_check.views import HealthCheckView
 from ai_auditor import views as ai_auditor_views
+from .views import mongodb_health
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', HealthCheckView.as_view(), name='health_check'),
+    path('health/mongodb/', mongodb_health, name='mongodb_health'),
     path('', include('dashboard.urls')),
     path('accounts/', include('accounts.urls')),
     path('clients/', include('clients.urls')),

@@ -34,6 +34,7 @@
       <span class="audit-pill risk-{{ risk_level }}">{{ risk_level|title }} risk</span>
       <span class="audit-pill">Gemini AI</span>
       <span class="audit-pill">Operational Data Layer</span>
+      <span class="audit-pill {% if mongodb_status == 'MongoDB Connected' %}mongo-ok{% else %}mongo-warn{% endif %}">{{ mongodb_status }}</span>
     </div>
     {% if stores|length > 1 %}
     <form class="store-switcher" method="get">
