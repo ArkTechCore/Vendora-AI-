@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -18,6 +19,10 @@ class Command(BaseCommand):
         User = get_user_model()
         today = timezone.localdate()
         yesterday = today - timedelta(days=1)
+
+        if not Client.objects.filter(name="Spicy Grill").exists():
+            self.stdout.write("Spicy Grill base data not found. Creating it first...")
+            call_command("seed_spicy_grill_live")
 
         client = Client.objects.get(name="Spicy Grill")
         store = Store.objects.get(client=client, code="SG-MAIN")
