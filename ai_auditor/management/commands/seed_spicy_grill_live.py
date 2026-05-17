@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from clients.models import Client
 from dailyclose.models import DailyClose
-from inventory.models import Ingredient
+from inventory.models import Ingredient, PurchaseReceive, PurchaseReceiveItem, Vendor
 from paidouts.models import PaidOut
 from pos_integrations.models import ImportedSale, ImportedSaleItem, POSConnection
 from stores.models import Store
@@ -81,6 +81,7 @@ class Command(BaseCommand):
         manager.save()
 
         self._seed_inventory(client, store)
+        self._seed_purchase_receives(client, store, owner)
         connection = self._seed_sales(client, store)
         self._seed_paidouts(store, owner, manager)
         self._seed_daily_closes(store, owner, connection)
@@ -131,6 +132,117 @@ class Command(BaseCommand):
                     "is_active": True,
                 },
             )
+
+    def _seed_purchase_receives(self, client, store, owner):
+        vendors = {}
+        for name, contact, phone in [
+            ("Hudson Meat Supply", "Anthony Russo", "555-0191"),
+            ("Fresh Valley Produce", "Mina Shah", "555-0192"),
+            ("Quick Market Wholesale", "Operations Desk", "555-0193"),
+            ("Restaurant Depot", "Receiving Desk", "555-0194"),
+        ]:
+            vendor, _ = Vendor.objects.update_or_create(
+                client=client,
+                name=name,
+                defaults={
+                    "contact_name": contact,
+                    "phone": phone,
+                    "email": f"{name.lower().replace(' ', '.')}@vendor.local",
+                    "address": "Vendor route account",
+                    "is_active": True,
+                },
+            )
+            vendors[name] = vendor
+
+        today = timezone.localdate()
+        purchases = [
+            {
+                "invoice": "SG-INV-MEAT-001",
+                "vendor": vendors["Hudson Meat Supply"],
+                "date": today - timedelta(days=1),
+                "items": [
+                    ("Chicken breast", "40.000", "3.45"),
+                    ("Chicken thighs", "35.000", "2.65"),
+                    ("Lamb cubes", "28.000", "6.95"),
+                    ("Ground beef", "32.000", "5.10"),
+                ],
+            },
+            {
+                "invoice": "SG-INV-PROD-001",
+                "vendor": vendors["Fresh Valley Produce"],
+                "date": today - timedelta(days=1),
+                "items": [
+                    ("Lettuce", "18.000", "2.05"),
+                    ("Tomatoes", "34.000", "1.82"),
+                    ("Onions", "45.000", "0.82"),
+                    ("Cilantro", "14.000", "1.05"),
+                    ("Avocado", "50.000", "1.28"),
+                ],
+            },
+            {
+                "invoice": "SG-INV-OIL-001",
+                "vendor": vendors["Quick Market Wholesale"],
+                "date": today - timedelta(days=2),
+                "items": [
+                    ("Fryer oil", "18.000", "19.25"),
+                    ("Canola oil backup", "10.000", "17.10"),
+                    ("To-go boxes", "280.000", "0.22"),
+                    ("Napkins", "500.000", "0.04"),
+                    ("Sanitizer", "8.000", "9.85"),
+                ],
+            },
+            {
+                "invoice": "SG-INV-DRY-001",
+                "vendor": vendors["Restaurant Depot"],
+                "date": today - timedelta(days=3),
+                "items": [
+                    ("Basmati rice", "120.000", "1.18"),
+                    ("Flour tortillas", "320.000", "0.18"),
+                    ("Burger buns", "140.000", "0.42"),
+                    ("Salsa roja", "20.000", "3.35"),
+                    ("Queso", "18.000", "4.80"),
+                    ("Cheddar", "35.000", "4.20"),
+                ],
+            },
+        ]
+
+        for purchase_data in purchases:
+            subtotal = Decimal("0.00")
+            for ingredient_name, quantity, unit_cost in purchase_data["items"]:
+                subtotal += Decimal(quantity) * Decimal(unit_cost)
+            subtotal = subtotal.quantize(Decimal("0.01"))
+            tax_fees = (subtotal * Decimal("0.035")).quantize(Decimal("0.01"))
+            purchase, created = PurchaseReceive.objects.get_or_create(
+                store=store,
+                invoice_number=purchase_data["invoice"],
+                defaults={
+                    "vendor": purchase_data["vendor"],
+                    "invoice_date": purchase_data["date"],
+                    "due_date": purchase_data["date"] + timedelta(days=14),
+                    "status": PurchaseReceive.POSTED,
+                    "subtotal": subtotal,
+                    "tax_fees": tax_fees,
+                    "total": subtotal + tax_fees,
+                    "posted_at": timezone.now(),
+                    "received_by": owner,
+                    "notes": "Seeded Spicy Grill purchase receive for inventory audit context.",
+                },
+            )
+            if not created:
+                continue
+            for ingredient_name, quantity, unit_cost in purchase_data["items"]:
+                ingredient = Ingredient.objects.get(client=client, store=store, name=ingredient_name)
+                PurchaseReceiveItem.objects.create(
+                    purchase=purchase,
+                    ingredient=ingredient,
+                    vendor_item_name=ingredient_name,
+                    pack_size=ingredient.inventory_unit,
+                    purchase_quantity=Decimal(quantity),
+                    purchase_unit=ingredient.purchase_unit,
+                    quantity_received=Decimal(quantity),
+                    inventory_unit=ingredient.inventory_unit,
+                    unit_cost=Decimal(unit_cost),
+                )
 
     def _seed_sales(self, client, store):
         today = timezone.localdate()
