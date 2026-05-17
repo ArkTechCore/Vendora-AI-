@@ -1,0 +1,240 @@
+from datetime import timedelta
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+
+from clients.models import Client
+from dailyclose.models import DailyClose
+from inventory.models import Ingredient
+from paidouts.models import PaidOut
+from pos_integrations.models import ImportedSale, ImportedSaleItem, POSConnection
+from stores.models import Store
+
+
+class Command(BaseCommand):
+    help = "Seed Spicy Grill with production-style sales, paidouts, inventory, and audit-ready records."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--username", default="john brick")
+        parser.add_argument("--password", default="John@1339")
+
+    def handle(self, *args, **options):
+        username = options["username"]
+        password = options["password"]
+
+        User = get_user_model()
+        client, _ = Client.objects.update_or_create(
+            name="Spicy Grill",
+            defaults={
+                "owner_name": "John Brick",
+                "email": "john.brick@spicygrill.local",
+                "phone": "555-0139",
+                "street_address": "1400 Market Street",
+                "city": "Jersey City",
+                "state": "NJ",
+                "postal_code": "07302",
+                "country": "US",
+                "status": Client.ACTIVE,
+            },
+        )
+        owner, _ = User.objects.get_or_create(username=username)
+        owner.first_name = "John"
+        owner.last_name = "Brick"
+        owner.email = "john.brick@spicygrill.local"
+        owner.role = User.CLIENT_OWNER
+        owner.client = client
+        owner.store = None
+        owner.is_active = True
+        owner.can_manage_inventory = True
+        owner.can_manage_paidouts = True
+        owner.can_close_day = True
+        owner.can_view_reports = True
+        owner.can_manage_pos = True
+        owner.set_password(password)
+        owner.save()
+
+        store, _ = Store.objects.update_or_create(
+            client=client,
+            code="SG-MAIN",
+            defaults={
+                "name": "Spicy Grill Main",
+                "address": "1400 Market Street, Jersey City, NJ 07302",
+                "phone": "555-0139",
+                "is_active": True,
+            },
+        )
+        manager, _ = User.objects.get_or_create(username="spicy_manager")
+        manager.first_name = "Marco"
+        manager.last_name = "Diaz"
+        manager.email = "marco.diaz@spicygrill.local"
+        manager.role = User.MANAGER
+        manager.client = client
+        manager.store = store
+        manager.can_manage_inventory = True
+        manager.can_manage_paidouts = True
+        manager.can_close_day = True
+        manager.can_view_reports = True
+        manager.is_active = True
+        manager.set_password("Manager@1339")
+        manager.save()
+
+        self._seed_inventory(client, store)
+        connection = self._seed_sales(client, store)
+        self._seed_paidouts(store, owner, manager)
+        self._seed_daily_closes(store, owner, connection)
+
+        self.stdout.write(self.style.SUCCESS("Spicy Grill live dataset is ready."))
+        self.stdout.write(f"Login: {username} / {password}")
+        self.stdout.write(f"Store: {store.name} ({store.code})")
+
+    def _seed_inventory(self, client, store):
+        rows = [
+            ("Chicken breast", "Protein", "lb", "18.000", "45.000", "3.35"),
+            ("Chicken thighs", "Protein", "lb", "22.000", "38.000", "2.55"),
+            ("Lamb cubes", "Protein", "lb", "12.000", "28.000", "6.75"),
+            ("Ground beef", "Protein", "lb", "36.000", "34.000", "4.95"),
+            ("Fryer oil", "Kitchen", "gal", "4.000", "14.000", "18.90"),
+            ("Canola oil backup", "Kitchen", "gal", "3.000", "8.000", "16.75"),
+            ("Basmati rice", "Dry goods", "lb", "95.000", "70.000", "1.10"),
+            ("Flour tortillas", "Dry goods", "pcs", "160.000", "220.000", "0.16"),
+            ("Burger buns", "Bakery", "pcs", "72.000", "95.000", "0.38"),
+            ("Lettuce", "Produce", "heads", "10.000", "22.000", "1.95"),
+            ("Tomatoes", "Produce", "lb", "18.000", "35.000", "1.70"),
+            ("Onions", "Produce", "lb", "42.000", "38.000", "0.76"),
+            ("Cilantro", "Produce", "bunch", "6.000", "12.000", "0.98"),
+            ("Jalapenos", "Produce", "lb", "7.000", "10.000", "1.25"),
+            ("Avocado", "Produce", "pcs", "28.000", "45.000", "1.20"),
+            ("Salsa roja", "Prep", "qt", "9.000", "18.000", "3.20"),
+            ("Queso", "Dairy", "qt", "8.000", "14.000", "4.65"),
+            ("Cheddar", "Dairy", "lb", "20.000", "24.000", "4.05"),
+            ("To-go boxes", "Packaging", "pcs", "130.000", "180.000", "0.20"),
+            ("Napkins", "Packaging", "pcs", "260.000", "240.000", "0.03"),
+            ("Sanitizer", "Cleaning", "gal", "2.000", "6.000", "9.50"),
+        ]
+        for name, category, unit, current, reorder, cost in rows:
+            Ingredient.objects.update_or_create(
+                client=client,
+                store=store,
+                name=name,
+                defaults={
+                    "category": category,
+                    "inventory_unit": unit,
+                    "purchase_unit": unit,
+                    "recipe_unit": unit,
+                    "current_quantity": Decimal(current),
+                    "low_stock_level": Decimal(reorder),
+                    "cost_per_unit": Decimal(cost),
+                    "average_cost": Decimal(cost),
+                    "last_cost": Decimal(cost),
+                    "is_active": True,
+                },
+            )
+
+    def _seed_sales(self, client, store):
+        today = timezone.localdate()
+        connection, _ = POSConnection.objects.update_or_create(
+            client=client,
+            store=store,
+            provider="toast",
+            external_merchant_id="sg-merchant-001",
+            defaults={
+                "connection_name": "Spicy Grill Toast POS",
+                "environment": "production",
+                "external_location_id": "sg-main-001",
+                "is_active": True,
+                "auto_sync_enabled": True,
+                "sync_status": "success",
+                "last_sync_at": timezone.now(),
+            },
+        )
+        for day_offset in range(7, 0, -1):
+            business_date = today - timedelta(days=day_offset)
+            daily_base = Decimal("11200.00") + Decimal(day_offset * 475)
+            for batch in range(1, 7):
+                total = (daily_base / Decimal("6") + Decimal(batch * 31)).quantize(Decimal("0.01"))
+                cash = (total * Decimal("0.34")).quantize(Decimal("0.01"))
+                sale, _ = ImportedSale.objects.update_or_create(
+                    connection=connection,
+                    external_order_id=f"SG-{business_date:%Y%m%d}-B{batch}",
+                    defaults={
+                        "business_date": business_date,
+                        "total_amount": total,
+                        "cash_amount": cash,
+                        "card_amount": total - cash,
+                        "tax_amount": (total * Decimal("0.066")).quantize(Decimal("0.01")),
+                        "tip_amount": (total * Decimal("0.072")).quantize(Decimal("0.01")),
+                        "discount_amount": Decimal("0.00"),
+                        "status": "imported",
+                    },
+                )
+                ImportedSaleItem.objects.update_or_create(
+                    sale=sale,
+                    external_item_id=f"spicy-combo-{batch}",
+                    defaults={
+                        "item_name": "Spicy mixed grill combo",
+                        "quantity": Decimal("18") + batch,
+                        "unit_price": Decimal("24.50"),
+                    },
+                )
+        return connection
+
+    def _seed_paidouts(self, store, owner, manager):
+        today = timezone.localdate()
+        yesterday = today - timedelta(days=1)
+        rows = [
+            (yesterday, "cash", "other", "1850.00", "late night cash adjustment - emergency drawer correction", "Register cash"),
+            (yesterday, "cash", "meat", "1425.75", "urgent lamb and chicken purchase without invoice", "Hudson Meat Supply"),
+            (yesterday, "cash", "emergency_purchase", "980.40", "emergency fryer oil and produce restock", "Quick Market Wholesale"),
+            (yesterday, "card", "maintenance", "765.20", "walk-in cooler repair after close", "Rapid Refrigeration"),
+            (today - timedelta(days=2), "cash", "other", "1320.00", "manager cash adjustment for vendor shortage", "Register cash"),
+            (today - timedelta(days=2), "cash", "meat", "1188.35", "same-day chicken reorder due to stockout", "Hudson Meat Supply"),
+            (today - timedelta(days=3), "cash", "emergency_purchase", "890.10", "fryer oil emergency buy", "Restaurant Depot"),
+            (today - timedelta(days=3), "bank", "utilities", "1105.65", "gas utility catch-up payment", "Utility Provider"),
+            (today - timedelta(days=4), "cash", "vegetables", "640.90", "produce restock after prep shortage", "Fresh Valley Produce"),
+            (today - timedelta(days=5), "cash", "other", "1240.00", "cash adjustment with missing receipt", "Register cash"),
+            (today - timedelta(days=6), "card", "cleaning", "520.50", "deep cleaning after hood inspection", "CleanPro Services"),
+            (today - timedelta(days=7), "cash", "meat", "1044.25", "weekend protein rush purchase", "Hudson Meat Supply"),
+        ]
+        for index, (business_date, source, category, amount, description, vendor) in enumerate(rows, start=1):
+            PaidOut.objects.get_or_create(
+                store=store,
+                receipt_number=f"SG-PO-{business_date:%Y%m%d}-{index:02d}",
+                defaults={
+                    "business_date": business_date,
+                    "amount": Decimal(amount),
+                    "category": category,
+                    "description": description,
+                    "vendor_payee": vendor,
+                    "payment_source": source,
+                    "created_by": manager if index % 3 else owner,
+                    "approved": True,
+                    "locked": True,
+                },
+            )
+
+    def _seed_daily_closes(self, store, owner, connection):
+        for row in ImportedSale.objects.filter(connection=connection).values("business_date").distinct():
+            business_date = row["business_date"]
+            sales = ImportedSale.objects.filter(connection=connection, business_date=business_date)
+            cash_sales = sum((sale.cash_amount for sale in sales), Decimal("0.00"))
+            card_sales = sum((sale.card_amount for sale in sales), Decimal("0.00"))
+            paidouts = PaidOut.objects.filter(store=store, business_date=business_date, payment_source="cash")
+            cash_paidouts = sum((paidout.amount for paidout in paidouts), Decimal("0.00"))
+            expected_cash = Decimal("750.00") + cash_sales - cash_paidouts
+            counted_cash = expected_cash - Decimal("285.00") if cash_paidouts > Decimal("1000.00") else expected_cash - Decimal("42.00")
+            DailyClose.objects.get_or_create(
+                store=store,
+                business_date=business_date,
+                defaults={
+                    "opening_cash": Decimal("750.00"),
+                    "cash_sales": cash_sales.quantize(Decimal("0.01")),
+                    "card_sales": card_sales.quantize(Decimal("0.01")),
+                    "cash_paidouts": cash_paidouts.quantize(Decimal("0.01")),
+                    "counted_cash": counted_cash.quantize(Decimal("0.01")),
+                    "notes": "Operational close seeded for Spicy Grill audit review.",
+                    "closed_by": owner,
+                    "created_by": owner,
+                },
+            )
