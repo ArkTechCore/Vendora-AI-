@@ -55,20 +55,39 @@ class Command(BaseCommand):
         owner.set_password(password)
         owner.save()
 
-        store, _ = Store.objects.update_or_create(
-            client=client,
-            code="SG-MAIN",
-            defaults={
-                "name": "Spicy Grill Main",
-                "address": "1400 Market Street, Jersey City, NJ 07302",
-                "phone": "555-0139",
-                "is_active": True,
-            },
-        )
-        manager, _ = User.objects.get_or_create(username="spicy_manager")
-        manager.first_name = "Marco"
-        manager.last_name = "Diaz"
-        manager.email = "marco.diaz@spicygrill.local"
+        store_configs = [
+            ("SG-MAIN", "Spicy Grill Main", "1400 Market Street, Jersey City, NJ 07302", "spicy_manager", "Marco", "Diaz"),
+            ("SG-WEST", "Spicy Grill West", "88 West Side Avenue, Jersey City, NJ 07305", "spicy_west_manager", "Nina", "Khan"),
+        ]
+        seeded_stores = []
+        for code, name, address, manager_username, first_name, last_name in store_configs:
+            store, _ = Store.objects.update_or_create(
+                client=client,
+                code=code,
+                defaults={
+                    "name": name,
+                    "address": address,
+                    "phone": "555-0139",
+                    "is_active": True,
+                },
+            )
+            manager = self._ensure_manager(User, client, store, manager_username, first_name, last_name)
+            self._seed_inventory(client, store)
+            self._seed_purchase_receives(client, store, owner)
+            connection = self._seed_sales(client, store)
+            self._seed_paidouts(store, owner, manager)
+            self._seed_daily_closes(store, owner, connection)
+            seeded_stores.append(store)
+
+        self.stdout.write(self.style.SUCCESS("Spicy Grill live dataset is ready."))
+        self.stdout.write(f"Login: {username} / {password}")
+        self.stdout.write("Stores: " + ", ".join(f"{store.name} ({store.code})" for store in seeded_stores))
+
+    def _ensure_manager(self, User, client, store, username, first_name, last_name):
+        manager, _ = User.objects.get_or_create(username=username)
+        manager.first_name = first_name
+        manager.last_name = last_name
+        manager.email = f"{username.replace('_', '.')}@spicygrill.local"
         manager.role = User.MANAGER
         manager.client = client
         manager.store = store
@@ -79,16 +98,7 @@ class Command(BaseCommand):
         manager.is_active = True
         manager.set_password("Manager@1339")
         manager.save()
-
-        self._seed_inventory(client, store)
-        self._seed_purchase_receives(client, store, owner)
-        connection = self._seed_sales(client, store)
-        self._seed_paidouts(store, owner, manager)
-        self._seed_daily_closes(store, owner, connection)
-
-        self.stdout.write(self.style.SUCCESS("Spicy Grill live dataset is ready."))
-        self.stdout.write(f"Login: {username} / {password}")
-        self.stdout.write(f"Store: {store.name} ({store.code})")
+        return manager
 
     def _seed_inventory(self, client, store):
         rows = [
@@ -250,11 +260,11 @@ class Command(BaseCommand):
             client=client,
             store=store,
             provider="toast",
-            external_merchant_id="sg-merchant-001",
+            external_merchant_id=f"sg-{store.code.lower()}",
             defaults={
                 "connection_name": "Spicy Grill Toast POS",
                 "environment": "production",
-                "external_location_id": "sg-main-001",
+                "external_location_id": f"{store.code.lower()}-001",
                 "is_active": True,
                 "auto_sync_enabled": True,
                 "sync_status": "success",
@@ -269,7 +279,7 @@ class Command(BaseCommand):
                 cash = (total * Decimal("0.34")).quantize(Decimal("0.01"))
                 sale, _ = ImportedSale.objects.update_or_create(
                     connection=connection,
-                    external_order_id=f"SG-{business_date:%Y%m%d}-B{batch}",
+                    external_order_id=f"{store.code}-{business_date:%Y%m%d}-B{batch}",
                     defaults={
                         "business_date": business_date,
                         "total_amount": total,
@@ -310,12 +320,22 @@ class Command(BaseCommand):
             (today - timedelta(days=7), "cash", "meat", "1044.25", "weekend protein rush purchase", "Hudson Meat Supply"),
         ]
         for index, (business_date, source, category, amount, description, vendor) in enumerate(rows, start=1):
+            amount_value = Decimal(amount)
+            existing = PaidOut.objects.filter(
+                store=store,
+                business_date=business_date,
+                amount=amount_value,
+                category=category,
+                payment_source=source,
+            ).first()
+            if existing:
+                continue
             PaidOut.objects.get_or_create(
                 store=store,
-                receipt_number=f"SG-PO-{business_date:%Y%m%d}-{index:02d}",
+                receipt_number=f"{store.code}-PO-{business_date:%Y%m%d}-{index:02d}",
                 defaults={
                     "business_date": business_date,
-                    "amount": Decimal(amount),
+                    "amount": amount_value,
                     "category": category,
                     "description": description,
                     "vendor_payee": vendor,

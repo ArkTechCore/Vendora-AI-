@@ -25,39 +25,41 @@ class Command(BaseCommand):
             call_command("seed_spicy_grill_live")
 
         client = Client.objects.get(name="Spicy Grill")
-        store = Store.objects.get(client=client, code="SG-MAIN")
         owner = User.objects.get(username="john brick")
-        manager = User.objects.get(username="spicy_manager")
-
-        connection, _ = POSConnection.objects.get_or_create(
-            client=client,
-            store=store,
-            provider="toast",
-            external_merchant_id="sg-merchant-001",
-            defaults={
-                "connection_name": "Spicy Grill Toast POS",
-                "environment": "production",
-                "external_location_id": "sg-main-001",
-                "is_active": True,
-                "auto_sync_enabled": True,
-                "sync_status": "success",
-                "last_sync_at": timezone.now(),
-            },
-        )
-
-        sales_created = self._add_sales(connection, today, yesterday)
-        paidouts_created = self._add_paidouts(store, owner, manager, today, yesterday)
-
-        yesterday_sales_count = ImportedSale.objects.filter(connection=connection, business_date=yesterday).count()
-        yesterday_paidout_count = PaidOut.objects.filter(store=store, business_date=yesterday).count()
+        sales_created = 0
+        paidouts_created = 0
+        summaries = []
+        for store in Store.objects.filter(client=client, code__in=["SG-MAIN", "SG-WEST"]).order_by("code"):
+            manager = store.users.filter(role=User.MANAGER).first() or owner
+            connection, _ = POSConnection.objects.get_or_create(
+                client=client,
+                store=store,
+                provider="toast",
+                external_merchant_id=f"sg-{store.code.lower()}",
+                defaults={
+                    "connection_name": f"{store.name} Toast POS",
+                    "environment": "production",
+                    "external_location_id": f"{store.code.lower()}-001",
+                    "is_active": True,
+                    "auto_sync_enabled": True,
+                    "sync_status": "success",
+                    "last_sync_at": timezone.now(),
+                },
+            )
+            sales_created += self._add_sales(connection, store, today, yesterday)
+            paidouts_created += self._add_paidouts(store, owner, manager, today, yesterday)
+            summaries.append(
+                f"{store.name}: {ImportedSale.objects.filter(connection=connection, business_date=yesterday).count()} sales, "
+                f"{PaidOut.objects.filter(store=store, business_date=yesterday).count()} paidouts yesterday"
+            )
 
         self.stdout.write(self.style.SUCCESS("Spicy Grill risk data boosted."))
         self.stdout.write(f"New sales transactions created: {sales_created}")
         self.stdout.write(f"New suspicious paidouts created: {paidouts_created}")
-        self.stdout.write(f"Yesterday sales records: {yesterday_sales_count}")
-        self.stdout.write(f"Yesterday paidouts: {yesterday_paidout_count}")
+        for summary in summaries:
+            self.stdout.write(summary)
 
-    def _add_sales(self, connection, today, yesterday):
+    def _add_sales(self, connection, store, today, yesterday):
         sales_created = 0
         for day, label, base in [
             (yesterday, "Y", Decimal("185.00")),
@@ -68,7 +70,7 @@ class Command(BaseCommand):
                 cash = (total * Decimal("0.42")).quantize(Decimal("0.01"))
                 _, created = ImportedSale.objects.update_or_create(
                     connection=connection,
-                    external_order_id=f"SG-HEAVY-{label}-{index:03d}",
+                    external_order_id=f"{store.code}-HEAVY-{label}-{index:03d}",
                     defaults={
                         "business_date": day,
                         "total_amount": total,
@@ -100,12 +102,22 @@ class Command(BaseCommand):
 
         paidouts_created = 0
         for index, (day, source, category, amount, description, vendor, user) in enumerate(rows, start=1):
+            amount_value = Decimal(amount)
+            existing = PaidOut.objects.filter(
+                store=store,
+                business_date=day,
+                amount=amount_value,
+                category=category,
+                payment_source=source,
+            ).first()
+            if existing:
+                continue
             _, created = PaidOut.objects.get_or_create(
                 store=store,
-                receipt_number=f"SG-SUSPICIOUS-{day:%Y%m%d}-{index:02d}",
+                receipt_number=f"{store.code}-SUSPICIOUS-{day:%Y%m%d}-{index:02d}",
                 defaults={
                     "business_date": day,
-                    "amount": Decimal(amount),
+                    "amount": amount_value,
                     "category": category,
                     "description": description,
                     "vendor_payee": vendor,
