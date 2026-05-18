@@ -257,6 +257,54 @@ p { color: var(--muted); }
 .button.small { padding: 7px 10px; font-size: 13px; }
 .form-card { width: min(760px, 100%); padding: 24px; }
 .auth-card { border-top: 4px solid var(--accent); }
+.judge-login-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 14px;
+  border: 1px solid #cfe3df;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fffd, #f5fbfa);
+}
+.judge-login-panel span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.judge-login-panel strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+}
+.judge-login-panel small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.credential-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.credential-grid code {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: white;
+  color: var(--text);
+  font-weight: 800;
+}
+.secondary-credentials {
+  padding-top: 10px;
+  border-top: 1px solid #dcebe8;
+}
 form p { display: grid; gap: 6px; margin: 0 0 15px; color: var(--text); }
 label { font-weight: 750; font-size: 14px; color: var(--text); }
 input, select, textarea {

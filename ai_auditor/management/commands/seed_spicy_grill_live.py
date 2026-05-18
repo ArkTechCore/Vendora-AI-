@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from clients.models import Client
 from dailyclose.models import DailyClose
-from inventory.models import Ingredient, PurchaseReceive, PurchaseReceiveItem, Vendor
+from inventory.models import Ingredient, PurchaseReceive, PurchaseReceiveItem, StockMovement, Vendor
 from paidouts.models import PaidOut
 from pos_integrations.models import ImportedSale, ImportedSaleItem, POSConnection
 from stores.models import Store
@@ -74,6 +74,7 @@ class Command(BaseCommand):
             manager = self._ensure_manager(User, client, store, manager_username, first_name, last_name)
             self._seed_inventory(client, store)
             self._seed_purchase_receives(client, store, owner)
+            self._seed_inventory_movements(client, store, manager)
             connection = self._seed_sales(client, store)
             self._seed_paidouts(store, owner, manager)
             self._seed_daily_closes(store, owner, connection)
@@ -253,6 +254,29 @@ class Command(BaseCommand):
                     inventory_unit=ingredient.inventory_unit,
                     unit_cost=Decimal(unit_cost),
                 )
+
+    def _seed_inventory_movements(self, client, store, manager):
+        rows = [
+            ("Chicken breast", StockMovement.WASTE, "18.000", "Prep waste after over-portioning review"),
+            ("Chicken thighs", StockMovement.USAGE, "24.000", "High usage from mixed grill sales"),
+            ("Lamb cubes", StockMovement.WASTE, "6.000", "Trim loss above expected yield"),
+            ("Fryer oil", StockMovement.USAGE, "9.000", "Unusually high fryer oil drawdown"),
+            ("Tomatoes", StockMovement.WASTE, "12.000", "Spoilage from over-prep"),
+            ("Lettuce", StockMovement.WASTE, "8.000", "Damaged heads discarded before service"),
+            ("Salsa roja", StockMovement.USAGE, "7.000", "High sauce usage during dinner rush"),
+            ("To-go boxes", StockMovement.USAGE, "95.000", "Packaging use from delivery spike"),
+        ]
+        for ingredient_name, movement_type, quantity, note in rows:
+            ingredient = Ingredient.objects.get(client=client, store=store, name=ingredient_name)
+            if StockMovement.objects.filter(ingredient=ingredient, movement_type=movement_type, note=note).exists():
+                continue
+            StockMovement.objects.create(
+                ingredient=ingredient,
+                movement_type=movement_type,
+                quantity=Decimal(quantity),
+                note=note,
+                created_by=manager,
+            )
 
     def _seed_sales(self, client, store):
         today = timezone.localdate()
