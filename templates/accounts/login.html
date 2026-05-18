@@ -13,22 +13,22 @@
     <h2>Sign in</h2>
     {{ form.as_p }}
     <div class="judge-login-panel">
-      <div>
+      <div class="judge-login-header">
         <span>Judge access</span>
-        <strong>Client workspace</strong>
-        <small>Spicy Grill demo data with two stores, paidouts, inventory, purchases, and AI audits.</small>
+        <strong>Spicy Grill Client Workspace</strong>
+        <small>Two-store operational dataset with inventory, purchases, sales, paidouts, and AI audit history.</small>
       </div>
-      <div class="credential-grid">
-        <code>john brick</code>
-        <button class="button small copy-login" type="button" data-copy="john brick">Copy ID</button>
-        <code>John@1339</code>
-        <button class="button small copy-login" type="button" data-copy="John@1339">Copy Password</button>
-      </div>
-      <div class="credential-grid secondary-credentials">
-        <code>mohammed</code>
-        <button class="button small copy-login" type="button" data-copy="mohammed">Copy Admin ID</button>
-        <code>Mohammed@1339</code>
-        <button class="button small copy-login" type="button" data-copy="Mohammed@1339">Copy Admin Password</button>
+      <div class="credential-list" aria-label="Judge login credentials">
+        <div class="credential-row">
+          <span>User ID</span>
+          <code>john brick</code>
+          <button class="button small copy-login" type="button" data-copy="john brick">Copy</button>
+        </div>
+        <div class="credential-row">
+          <span>Password</span>
+          <code>John@1339</code>
+          <button class="button small copy-login" type="button" data-copy="John@1339">Copy</button>
+        </div>
       </div>
     </div>
     <div class="form-actions auth-actions">
